@@ -3,6 +3,7 @@ declare(strict_types=1);
 
 namespace App\Controllers;
 
+use App\Core\AppUrl;
 use App\Core\Csrf;
 use App\Core\Response;
 use App\Core\Session;
@@ -149,6 +150,7 @@ class ActivityController
             Response::error('Atividade não encontrada.', 404);
         }
 
+        $activity['share_url'] = AppUrl::share('atividade=' . $id);
         $data = ['success' => true, 'activity' => $activity];
 
         if (!empty($activity['evento_id'])) {

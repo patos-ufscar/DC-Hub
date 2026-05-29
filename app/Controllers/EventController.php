@@ -3,6 +3,7 @@ declare(strict_types=1);
 
 namespace App\Controllers;
 
+use App\Core\AppUrl;
 use App\Core\Csrf;
 use App\Core\Response;
 use App\Core\Session;
@@ -175,7 +176,7 @@ class EventController
         }
 
         $event['atividades'] = $activities;
-        $event['share_path'] = '?evento=' . $id;
+        $event['share_url'] = AppUrl::share('evento=' . $id);
 
         Response::json([
             'success' => true,
