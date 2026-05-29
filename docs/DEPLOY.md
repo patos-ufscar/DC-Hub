@@ -69,7 +69,16 @@ sudo mkdir -p /var/www/dc-hub
 sudo chown -R deploy:www-data /var/www/dc-hub
 ```
 
-O usuário `deploy` (SSH) deve poder escrever no deploy; `www-data` precisa escrever em `database/` e `backups/`.
+O usuário SSH (ex.: `ubuntu`) deve poder escrever no deploy; `www-data` precisa escrever em `database/` e `backups/`. Use grupo compartilhado:
+
+```bash
+sudo usermod -aG www-data ubuntu
+sudo chown -R ubuntu:www-data /var/www/dc-hub/database /var/www/dc-hub/backups
+sudo chmod -R 775 /var/www/dc-hub/database /var/www/dc-hub/backups
+sudo chown www-data:www-data /var/www/dc-hub/database/*.sqlite
+```
+
+Se o rsync falhar com `failed to set times on .../database`, o workflow já usa `--omit-dir-times`; confira também as permissões acima.
 
 ### 3. Arquivo `.env` no servidor (não vai no Git)
 

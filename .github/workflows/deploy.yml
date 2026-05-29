@@ -50,7 +50,10 @@ jobs:
         run: |
           set -euo pipefail
           RSYNC_SSH="ssh -p ${SSH_PORT} -o StrictHostKeyChecking=yes"
+          # --omit-dir-times / --no-owner: database/ e backups/ são www-data no servidor
           rsync -avz --delete \
+            --omit-dir-times \
+            --no-owner --no-group \
             --exclude '.git/' \
             --exclude '.github/' \
             --exclude '.env' \
@@ -82,9 +85,13 @@ jobs:
             exit 1
           fi
           WEB_USER="${WEB_USER:-www-data}"
+          DEPLOY_USER="${USER:-ubuntu}"
           if id "${WEB_USER}" >/dev/null 2>&1; then
-            chown -R "${WEB_USER}:${WEB_USER}" database backups
+            chown -R "${DEPLOY_USER}:${WEB_USER}" database backups
             chmod -R 775 database backups
+            if compgen -G "database/*.sqlite" >/dev/null; then
+              chown "${WEB_USER}:${WEB_USER}" database/*.sqlite
+            fi
           fi
           echo "Deploy concluído em \$(date -Iseconds)"
           REMOTE
