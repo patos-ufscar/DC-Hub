@@ -75,8 +75,8 @@ $ogImage = $pageUrl . '/assets/images/og-image.png';
             baseUrl: <?= json_encode(rtrim(dirname($_SERVER['SCRIPT_NAME']), '/')) ?>,
             publicUrl: <?= json_encode(AppUrl::base()) ?>,
             deepLink: {
-                atividade: <?= json_encode($deepAtividade) ?>,
-                evento: <?= json_encode($deepEvento) ?>
+                atividade: <?= $deepAtividade === null ? 'null' : (string) $deepAtividade ?>,
+                evento: <?= $deepEvento === null ? 'null' : (string) $deepEvento ?>
             }
         };
     </script>
