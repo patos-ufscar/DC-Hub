@@ -63,7 +63,7 @@ if ($deepAtividade <= 0) {
 
     <?php $patosCreditVariant = 'page'; include __DIR__ . '/partials/patos-credit.php'; ?>
 
-    <!-- Modals (fora do zoom para backdrop cobrir a tela inteira) -->
+    <!-- Modals -->
     <?php include __DIR__ . '/modals/login.php'; ?>
     <?php include __DIR__ . '/modals/register.php'; ?>
     <?php include __DIR__ . '/modals/profile.php'; ?>

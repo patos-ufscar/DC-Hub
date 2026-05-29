@@ -16,7 +16,7 @@ A branch `main` **não deve receber push direto** — use proteção de branch (
 No GitHub: **Settings → Branches → Add branch protection rule** para `main`:
 
 - [x] Require a pull request before merging
-- [x] Require status checks to pass (opcional: selecione **php-syntax** do workflow CI)
+- [x] Require status checks to pass (selecione **PHP syntax check** do workflow CI)
 - [x] Do not allow bypassing the above settings
 - [ ] Restrict who can push (opcional)
 
@@ -25,7 +25,7 @@ Ou via CLI (admin do repositório):
 ```bash
 gh api repos/patos-ufscar/DC-Hub/branches/main/protection \
   --method PUT \
-  --field required_status_checks='{"strict":true,"contexts":["php-syntax"]}' \
+  --field required_status_checks='{"strict":true,"checks":[{"context":"PHP syntax check"}]}' \
   --field enforce_admins=true \
   --field required_pull_request_reviews='{"required_approving_review_count":0}' \
   --field restrictions=null
@@ -69,7 +69,16 @@ sudo mkdir -p /var/www/dc-hub
 sudo chown -R deploy:www-data /var/www/dc-hub
 ```
 
-O usuário `deploy` (SSH) deve poder escrever no deploy; `www-data` precisa escrever em `database/` e `backups/`.
+O usuário SSH (ex.: `ubuntu`) deve poder escrever no deploy; `www-data` precisa escrever em `database/` e `backups/`. Use grupo compartilhado:
+
+```bash
+sudo usermod -aG www-data ubuntu
+sudo chown -R ubuntu:www-data /var/www/dc-hub/database /var/www/dc-hub/backups
+sudo chmod -R 775 /var/www/dc-hub/database /var/www/dc-hub/backups
+sudo chown www-data:www-data /var/www/dc-hub/database/*.sqlite
+```
+
+Se o rsync falhar com `failed to set times on .../database`, o workflow já usa `--omit-dir-times`; confira também as permissões acima.
 
 ### 3. Arquivo `.env` no servidor (não vai no Git)
 
