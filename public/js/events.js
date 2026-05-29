@@ -28,72 +28,188 @@ const Events = (() => {
         App.setText('detailEventGroup', ev.grupo_nome || '');
         App.setText('detailEventDesc', ev.descricao || '');
 
-        // Activities list
-        const list = document.getElementById('detailActivitiesList');
-        if (list) {
-            if (!ev.atividades || ev.atividades.length === 0) {
-                list.innerHTML = '<p class="text-muted">Nenhuma atividade cadastrada.</p>';
-            } else {
-                list.innerHTML = ev.atividades.map(a => {
-                    const inscrito = !!a.usuario_inscrito;
-                    const vagasEsgotadas = a.vagas_limite !== null && a.vagas_disponiveis !== null && a.vagas_disponiveis <= 0 && !inscrito;
-                    const vagasInfo = a.vagas_limite !== null
-                        ? `<span class="badge bg-light text-dark ms-1">${a.vagas_ocupadas || 0}/${a.vagas_limite} vagas</span>`
-                        : '';
-                    const certBadge = Number(a.oferece_certificado)
-                        ? '<span class="badge bg-info text-dark ms-1">Certificado</span>'
-                        : '';
-                    const descHtml = a.descricao
-                        ? `<div class="small mt-1">${App.escapeHtml(a.descricao)}</div>`
-                        : '';
-                    const rsvpBtnHtml = App.isLoggedIn()
-                        ? (vagasEsgotadas
-                            ? '<span class="badge bg-secondary">Vagas esgotadas</span>'
-                            : `<button class="btn btn-sm ${inscrito ? 'btn-dc-danger' : 'btn-dc-primary'} btnRsvp" data-id="${a.id}">${inscrito ? '<i class="bi bi-x-circle me-1"></i>Cancelar' : '<i class="bi bi-check-circle me-1"></i>RSVP'}</button>`)
-                        : '';
-                    const manageBtns = App.canManageGrupo(a.grupo_id)
-                        ? `<button class="btn btn-sm btn-dc-warning btnEditActivity" data-id="${a.id}"><i class="bi bi-pencil"></i></button>
-                           <button class="btn btn-sm btn-dc-secondary btnCheckin" data-id="${a.id}" data-title="${App.escapeHtml(a.titulo)}"><i class="bi bi-clipboard-check"></i></button>
-                           <button class="btn btn-sm btn-dc-danger btnDeleteActivity" data-id="${a.id}"><i class="bi bi-trash"></i></button>`
-                        : '';
-                    const shareBtn = `<button type="button" class="btn btn-sm btn-outline-secondary btnCopyActivityLink" data-id="${a.id}" title="Copiar link"><i class="bi bi-link-45deg"></i></button>`;
-                    const exportBtns = `<div class="dropdown d-inline">
-                        <button class="btn btn-sm btn-outline-secondary dropdown-toggle" data-bs-toggle="dropdown"><i class="bi bi-calendar-plus"></i></button>
-                        <ul class="dropdown-menu">
-                            <li><a class="dropdown-item btnExportGoogle" href="#" data-id="${a.id}"><i class="bi bi-google me-2"></i>Google Calendar</a></li>
-                            <li><a class="dropdown-item btnExportIcs" href="#" data-id="${a.id}"><i class="bi bi-download me-2"></i>Arquivo .ics</a></li>
-                        </ul>
-                    </div>`;
-                    return `<div class="card mb-2">
-                        <div class="card-body py-2 px-3">
-                            <div class="d-flex justify-content-between align-items-center">
-                                <div>
-                                    <strong>${App.escapeHtml(a.titulo)}</strong>
-                                    <div class="small text-muted">
-                                        <i class="bi bi-calendar3 me-1"></i>${App.formatDate(a.data)}
-                                        <i class="bi bi-clock ms-2 me-1"></i>${App.formatTime(a.hora_inicio)} - ${App.formatTime(a.hora_fim)}
-                                        <i class="bi bi-geo-alt ms-2 me-1"></i>${App.escapeHtml(a.local_nome || '')}
-                                        ${vagasInfo}${certBadge}
-                                    </div>
-                                    ${descHtml}
-                                </div>
-                                <div class="d-flex gap-1 align-items-center">
-                                    ${rsvpBtnHtml} ${shareBtn} ${exportBtns} ${manageBtns}
-                                </div>
-                            </div>
-                        </div>
-                    </div>`;
-                }).join('');
-            }
+        const shareInput = document.getElementById('eventShareUrl');
+        if (shareInput) {
+            shareInput.value = App.eventUrl(id);
         }
 
-        // Management buttons visibility
+        const atividades = ev.atividades || [];
+        renderEventRegistration(atividades);
+        renderEventActivitiesList(atividades, ev.grupo_id);
+
         const mgmt = document.getElementById('detailManageButtons');
         if (mgmt) mgmt.classList.toggle('d-none', !App.canManageGrupo(ev.grupo_id));
 
-        // Store event ID
-        document.getElementById('eventDetailModal').dataset.eventoId = eventoId;
+        const modal = document.getElementById('eventDetailModal');
+        modal.dataset.eventoId = String(id);
+        rememberPendingEvent(id);
+        App.setEventUrl(id);
         App.openModal('eventDetailModal');
+    }
+
+    function renderEventRegistration(atividades) {
+        const regSection = document.getElementById('detailEventRegistration');
+        if (!regSection) return;
+
+        const hasActs = atividades.length > 0;
+        regSection.classList.toggle('d-none', !hasActs);
+
+        const pickList = document.getElementById('detailRsvpPickList');
+        const allCb = document.getElementById('detailRsvpAll');
+        if (allCb) {
+            allCb.checked = false;
+            allCb.disabled = false;
+        }
+
+        if (!pickList || !hasActs) return;
+
+        if (!App.isLoggedIn()) {
+            pickList.innerHTML = '';
+            return;
+        }
+
+        pickList.innerHTML = atividades.map(a => {
+            const inscrito = !!a.usuario_inscrito;
+            const presente = a.usuario_status === 'presente';
+            const esgotado = a.vagas_limite !== null && a.vagas_disponiveis !== null
+                && a.vagas_disponiveis <= 0 && !inscrito;
+            const disabled = inscrito || presente || esgotado;
+            let statusLabel = '';
+            if (presente) {
+                statusLabel += ' <span class="badge bg-success ms-1">Presente</span>';
+            } else if (inscrito) {
+                statusLabel += ' <span class="badge bg-primary ms-1">Inscrito</span>';
+            }
+            if (esgotado) {
+                statusLabel += ' <span class="badge bg-secondary ms-1">Esgotado</span>';
+            }
+
+            return `<div class="form-check mb-1">
+                <input class="form-check-input detailRsvpAct" type="checkbox" value="${a.id}" id="detailRsvpAct${a.id}"
+                    ${disabled ? 'disabled' : ''} data-id="${a.id}">
+                <label class="form-check-label small" for="detailRsvpAct${a.id}">
+                    ${App.escapeHtml(a.titulo)} — ${App.formatDate(a.data)} ${App.formatTime(a.hora_inicio)}${statusLabel}
+                </label>
+            </div>`;
+        }).join('');
+    }
+
+    function renderEventActivitiesList(atividades, grupoId) {
+        const list = document.getElementById('detailActivitiesList');
+        if (!list) return;
+
+        if (atividades.length === 0) {
+            list.innerHTML = '<p class="text-muted">Nenhuma atividade cadastrada.</p>';
+            return;
+        }
+
+        list.innerHTML = atividades.map(a => {
+            const inscrito = !!a.usuario_inscrito;
+            const presente = a.usuario_status === 'presente';
+            const vagasEsgotadas = a.vagas_limite !== null && a.vagas_disponiveis !== null
+                && a.vagas_disponiveis <= 0 && !inscrito;
+            const vagasInfo = a.vagas_limite !== null
+                ? `<span class="badge bg-light text-dark ms-1">${a.vagas_ocupadas || 0}/${a.vagas_limite} vagas</span>`
+                : '';
+            const certBadge = Number(a.oferece_certificado)
+                ? '<span class="badge bg-info text-dark ms-1">Certificado</span>'
+                : '';
+            const descHtml = a.descricao
+                ? `<div class="small mt-1">${App.escapeHtml(a.descricao)}</div>`
+                : '';
+            let rsvpBtnHtml = '';
+            if (App.isLoggedIn()) {
+                if (presente) {
+                    rsvpBtnHtml = '<span class="badge bg-success">Presença confirmada</span>';
+                } else if (vagasEsgotadas) {
+                    rsvpBtnHtml = '<span class="badge bg-secondary">Vagas esgotadas</span>';
+                } else {
+                    rsvpBtnHtml = `<button class="btn btn-sm ${inscrito ? 'btn-dc-danger' : 'btn-dc-primary'} btnRsvp" data-id="${a.id}">${inscrito ? '<i class="bi bi-x-circle me-1"></i>Cancelar' : '<i class="bi bi-check-circle me-1"></i>RSVP'}</button>`;
+                }
+            }
+            const manageBtns = App.canManageGrupo(grupoId)
+                ? `<button class="btn btn-sm btn-dc-warning btnEditActivity" data-id="${a.id}"><i class="bi bi-pencil"></i></button>
+                   <button class="btn btn-sm btn-dc-secondary btnCheckin" data-id="${a.id}" data-title="${App.escapeHtml(a.titulo)}"><i class="bi bi-clipboard-check"></i></button>
+                   <button class="btn btn-sm btn-dc-danger btnDeleteActivity" data-id="${a.id}"><i class="bi bi-trash"></i></button>`
+                : '';
+            const shareBtn = `<button type="button" class="btn btn-sm btn-outline-secondary btnCopyActivityLink" data-id="${a.id}" title="Copiar link"><i class="bi bi-link-45deg"></i></button>`;
+            const openBtn = `<button type="button" class="btn btn-sm btn-outline-primary btnOpenActivityDetail" data-id="${a.id}" title="Abrir atividade"><i class="bi bi-box-arrow-up-right"></i></button>`;
+            const exportBtns = `<div class="dropdown d-inline">
+                <button class="btn btn-sm btn-outline-secondary dropdown-toggle" data-bs-toggle="dropdown"><i class="bi bi-calendar-plus"></i></button>
+                <ul class="dropdown-menu">
+                    <li><a class="dropdown-item btnExportGoogle" href="#" data-id="${a.id}"><i class="bi bi-google me-2"></i>Google Calendar</a></li>
+                    <li><a class="dropdown-item btnExportIcs" href="#" data-id="${a.id}"><i class="bi bi-download me-2"></i>Arquivo .ics</a></li>
+                </ul>
+            </div>`;
+            return `<div class="card mb-2">
+                <div class="card-body py-2 px-3">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <div>
+                            <strong>${App.escapeHtml(a.titulo)}</strong>
+                            <div class="small text-muted">
+                                <i class="bi bi-calendar3 me-1"></i>${App.formatDate(a.data)}
+                                <i class="bi bi-clock ms-2 me-1"></i>${App.formatTime(a.hora_inicio)} - ${App.formatTime(a.hora_fim)}
+                                <i class="bi bi-geo-alt ms-2 me-1"></i>${App.escapeHtml(a.local_nome || '')}
+                                ${vagasInfo}${certBadge}
+                            </div>
+                            ${descHtml}
+                        </div>
+                        <div class="d-flex gap-1 align-items-center flex-wrap justify-content-end">
+                            ${rsvpBtnHtml} ${openBtn} ${shareBtn} ${exportBtns} ${manageBtns}
+                        </div>
+                    </div>
+                </div>
+            </div>`;
+        }).join('');
+    }
+
+    function syncDetailRsvpAllCheckbox() {
+        const allCb = document.getElementById('detailRsvpAll');
+        if (!allCb) return;
+        const boxes = [...document.querySelectorAll('.detailRsvpAct:not(:disabled)')];
+        if (boxes.length === 0) {
+            allCb.checked = false;
+            allCb.disabled = true;
+            return;
+        }
+        allCb.disabled = false;
+        allCb.checked = boxes.every(b => b.checked);
+    }
+
+    function setDetailRsvpAll(checked) {
+        document.querySelectorAll('.detailRsvpAct:not(:disabled)').forEach(b => {
+            b.checked = checked;
+        });
+    }
+
+    function getSelectedDetailRsvpIds() {
+        const allCb = document.getElementById('detailRsvpAll');
+        if (allCb?.checked) {
+            return [];
+        }
+        return [...document.querySelectorAll('.detailRsvpAct:checked')].map(b => b.value);
+    }
+
+    async function bulkRsvp(eventoId) {
+        const ids = getSelectedDetailRsvpIds();
+        const allCb = document.getElementById('detailRsvpAll');
+        if (!allCb?.checked && ids.length === 0) {
+            App.toast('Selecione ao menos uma atividade ou marque "todas".', 'warning');
+            return;
+        }
+
+        const body = { evento_id: eventoId };
+        if (!allCb?.checked) {
+            body.atividade_ids = ids.map(Number);
+        }
+
+        const res = await App.api('registration.bulkRsvp', { body });
+        if (res.ok) {
+            App.toast(res.message || 'Inscrições atualizadas!', 'success');
+            showEventDetail(eventoId);
+        } else {
+            App.toast(res.error || 'Erro', 'danger');
+        }
     }
 
     /* ─── Event CRUD ─────────────────────────────────────── */
@@ -258,6 +374,18 @@ const Events = (() => {
         } catch { /* ignore */ }
     }
 
+    function rememberPendingEvent(id) {
+        try {
+            sessionStorage.setItem('dc_pending_evento', String(id));
+        } catch { /* ignore */ }
+    }
+
+    function clearPendingEvent() {
+        try {
+            sessionStorage.removeItem('dc_pending_evento');
+        } catch { /* ignore */ }
+    }
+
     async function showActivityDetail(activityId) {
         const id = Number(activityId);
         if (!id || id <= 0) {
@@ -293,6 +421,28 @@ const Events = (() => {
             const vagasInfo = a.vagas_limite !== null && a.vagas_limite !== ''
                 ? `${a.vagas_ocupadas || 0}/${a.vagas_limite} vagas`
                 : 'Vagas ilimitadas';
+            const eventBlock = document.getElementById('activityDetailEvent');
+            if (eventBlock) {
+                const ev = res.event;
+                if (ev?.id) {
+                    eventBlock.classList.remove('d-none');
+                    eventBlock.innerHTML = `
+                        <div class="d-flex flex-wrap align-items-center justify-content-between gap-2">
+                            <div class="small mb-0">
+                                <i class="bi bi-calendar2-event me-1"></i>
+                                Parte do evento <strong>${App.escapeHtml(ev.titulo)}</strong>
+                                ${ev.grupo_nome ? `<span class="text-muted"> · ${App.escapeHtml(ev.grupo_nome)}</span>` : ''}
+                            </div>
+                            <button type="button" class="btn btn-sm btn-outline-primary btnViewParentEvent" data-id="${ev.id}">
+                                Ver todas as atividades
+                            </button>
+                        </div>`;
+                } else {
+                    eventBlock.classList.add('d-none');
+                    eventBlock.innerHTML = '';
+                }
+            }
+
             const meta = document.getElementById('activityDetailMeta');
             if (meta) {
                 meta.innerHTML = `
@@ -300,7 +450,6 @@ const Events = (() => {
                     <div><i class="bi bi-clock me-1"></i>${App.formatTime(a.hora_inicio)} – ${App.formatTime(a.hora_fim)}</div>
                     <div><i class="bi bi-geo-alt me-1"></i>${App.escapeHtml(a.local_nome || '')}</div>
                     <div><i class="bi bi-people me-1"></i>${App.escapeHtml(vagasInfo)}</div>
-                    ${a.evento_titulo ? `<div><i class="bi bi-folder me-1"></i>${App.escapeHtml(a.evento_titulo)}</div>` : ''}
                     ${Number(a.oferece_certificado) ? '<div><span class="badge bg-info text-dark">Certificado</span></div>' : ''}`;
             }
 
@@ -448,6 +597,7 @@ const Events = (() => {
                 App.closeModal('eventFormModal');
                 App.toast(data.id ? 'Evento atualizado!' : 'Evento criado!', 'success');
                 Calendar.loadActivities();
+                if (window.EventsManage) EventsManage.refreshIfOpen();
             } else {
                 App.showFormError('eventFormError', res.error || 'Erro.');
             }
@@ -565,6 +715,51 @@ const Events = (() => {
             } else if (btn.classList.contains('btnCopyActivityLink')) {
                 e.preventDefault();
                 copyActivityLink(id);
+            } else if (btn.classList.contains('btnOpenActivityDetail')) {
+                e.preventDefault();
+                App.closeModal('eventDetailModal');
+                setTimeout(() => showActivityDetail(id), 300);
+            }
+        });
+
+        document.getElementById('detailRsvpAll')?.addEventListener('change', (e) => {
+            setDetailRsvpAll(e.target.checked);
+        });
+
+        document.getElementById('detailRsvpPickList')?.addEventListener('change', (e) => {
+            if (e.target.classList.contains('detailRsvpAct')) {
+                syncDetailRsvpAllCheckbox();
+            }
+        });
+
+        document.getElementById('btnDetailBulkRsvp')?.addEventListener('click', () => {
+            const evId = document.getElementById('eventDetailModal')?.dataset?.eventoId;
+            if (evId) bulkRsvp(evId);
+        });
+
+        document.getElementById('btnDetailLoginForRsvp')?.addEventListener('click', () => {
+            const evId = document.getElementById('eventDetailModal')?.dataset?.eventoId;
+            if (evId) rememberPendingEvent(evId);
+            App.closeModal('eventDetailModal');
+            setTimeout(() => App.openModal('loginModal'), 300);
+        });
+
+        document.getElementById('btnCopyEventLink')?.addEventListener('click', async () => {
+            const input = document.getElementById('eventShareUrl');
+            if (!input?.value) return;
+            if (await App.copyToClipboard(input.value)) {
+                App.toast('Link do evento copiado!', 'success');
+            }
+        });
+
+        document.getElementById('eventDetailModal')?.addEventListener('hidden.bs.modal', () => {
+            const loginOpen = document.getElementById('loginModal')?.classList.contains('show');
+            const registerOpen = document.getElementById('registerModal')?.classList.contains('show');
+            const activityOpen = document.getElementById('activityDetailModal')?.classList.contains('show');
+            if (loginOpen || registerOpen || activityOpen) return;
+            clearPendingEvent();
+            if (window.location.search.includes('evento=')) {
+                App.setEventUrl(null);
             }
         });
 
@@ -589,6 +784,7 @@ const Events = (() => {
                 App.closeModal('eventDetailModal');
                 App.toast('Evento excluído.', 'info');
                 Calendar.loadActivities();
+                if (window.EventsManage) EventsManage.refreshIfOpen();
             } else {
                 App.toast(res.error || 'Erro', 'danger');
             }
@@ -652,6 +848,10 @@ const Events = (() => {
                 if (window.ActivitiesManage) {
                     ActivitiesManage.openAttendees(id, btn.dataset.title);
                 }
+            } else if (btn.classList.contains('btnViewParentEvent')) {
+                const evId = btn.dataset.id;
+                App.closeModal('activityDetailModal');
+                setTimeout(() => showEventDetail(evId), 300);
             }
         });
 
@@ -676,11 +876,32 @@ const Events = (() => {
         handleDeepLink();
     }
 
+    function parseDeepLinkId(param) {
+        const raw = new URLSearchParams(window.location.search).get(param);
+        const id = Number(raw);
+        return Number.isInteger(id) && id > 0 ? id : null;
+    }
+
     function handleDeepLink() {
-        let id = App.cfg.deepLink?.atividade;
+        let eventoId = parseDeepLinkId('evento');
+        if (!eventoId) {
+            try {
+                const stored = sessionStorage.getItem('dc_pending_evento');
+                eventoId = stored ? Number(stored) : null;
+                if (!Number.isInteger(eventoId) || eventoId <= 0) eventoId = null;
+            } catch { /* ignore */ }
+        }
+        if (eventoId) {
+            setTimeout(() => showEventDetail(eventoId), 400);
+            return;
+        }
+
+        let id = parseDeepLinkId('atividade');
         if (!id) {
             try {
-                id = sessionStorage.getItem('dc_pending_atividade');
+                const stored = sessionStorage.getItem('dc_pending_atividade');
+                id = stored ? Number(stored) : null;
+                if (!Number.isInteger(id) || id <= 0) id = null;
             } catch { /* ignore */ }
         }
         if (id) {

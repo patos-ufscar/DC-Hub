@@ -221,6 +221,11 @@ const App = (() => {
         return `${publicBaseUrl()}/?atividade=${activityId}`;
     }
 
+    /** URL absoluta do evento (compartilhar / inscrições em lote). */
+    function eventUrl(eventId) {
+        return `${publicBaseUrl()}/?evento=${eventId}`;
+    }
+
     /** URL na barra do navegador (mantém host atual em dev). */
     function browserBaseUrl() {
         const base = (cfg.baseUrl || '.').replace(/\/$/, '');
@@ -232,8 +237,15 @@ const App = (() => {
     function setActivityUrl(activityId) {
         const url = activityId
             ? `${browserBaseUrl()}/?atividade=${activityId}`
-            : `${browserBaseUrl()}/`;
-        history.replaceState({ atividade: activityId || null }, '', url);
+            : buildHomeUrl();
+        history.replaceState({ atividade: activityId || null, evento: null }, '', url);
+    }
+
+    function setEventUrl(eventId) {
+        const url = eventId
+            ? `${browserBaseUrl()}/?evento=${eventId}`
+            : buildHomeUrl();
+        history.replaceState({ evento: eventId || null, atividade: null }, '', url);
     }
 
     function buildHomeUrl() {
@@ -321,6 +333,6 @@ const App = (() => {
         isLoggedIn, userRole, isAdmin, isProj, canManage, canManageGrupo, canAdmin,
         updateUIForAuth, cfg,
         MESES, DIAS_SEMANA, formatDate, formatTime,
-        activityUrl, setActivityUrl, buildHomeUrl, copyToClipboard
+        activityUrl, eventUrl, setActivityUrl, setEventUrl, buildHomeUrl, copyToClipboard
     };
 })();

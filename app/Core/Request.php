@@ -20,6 +20,7 @@ final class Request
         'location.create',
         'location.update',
         'registration.toggle',
+        'registration.bulkRsvp',
         'registration.validate',
         'registration.scanPresence',
         'registration.generateCode',

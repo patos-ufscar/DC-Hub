@@ -81,4 +81,44 @@ class Event
         );
         return $stmt->fetchAll();
     }
+
+    /** Eventos com estatísticas para painel de gestão (proj/adm). */
+    public function listForManage(?int $grupoId): array
+    {
+        $sql = 'SELECT e.*, g.nome AS grupo_nome,
+                       (SELECT COUNT(*) FROM atividades a WHERE a.evento_id = e.id) AS total_atividades,
+                       (SELECT MIN(a.data) FROM atividades a WHERE a.evento_id = e.id AND a.data >= date("now")) AS proxima_data,
+                       (SELECT COUNT(*) FROM inscricoes i
+                        JOIN atividades a ON a.id = i.atividade_id
+                        WHERE a.evento_id = e.id AND i.status IN ("rsvp", "presente")) AS total_inscricoes
+                FROM eventos e
+                JOIN grupos g ON g.id = e.grupo_id';
+
+        if ($grupoId !== null) {
+            $sql .= ' WHERE e.grupo_id = :gid';
+        }
+
+        $sql .= ' ORDER BY e.created_at DESC';
+
+        if ($grupoId !== null) {
+            $stmt = $this->db->prepare($sql);
+            $stmt->bindValue(':gid', $grupoId, PDO::PARAM_INT);
+            $stmt->execute();
+            return $stmt->fetchAll();
+        }
+
+        return $this->db->query($sql)->fetchAll();
+    }
+
+    /** @return int[] IDs de atividades do evento (ordenadas por data). */
+    public function listActivityIds(int $eventoId): array
+    {
+        $stmt = $this->db->prepare(
+            'SELECT id FROM atividades WHERE evento_id = :eid ORDER BY data, hora_inicio'
+        );
+        $stmt->bindValue(':eid', $eventoId, PDO::PARAM_INT);
+        $stmt->execute();
+
+        return array_map('intval', array_column($stmt->fetchAll(), 'id'));
+    }
 }

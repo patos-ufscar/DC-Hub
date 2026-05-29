@@ -8,6 +8,7 @@
             </div>
             <div class="modal-body">
                 <p class="text-muted small mb-2" id="activityDetailGroup"></p>
+                <div id="activityDetailEvent" class="alert alert-light border py-2 px-3 mb-3 d-none" role="status"></div>
                 <p id="activityDetailDesc" class="mb-3"></p>
                 <div class="small text-muted mb-3" id="activityDetailMeta"></div>
                 <div class="activity-share-box mb-3" id="activityDetailShare">

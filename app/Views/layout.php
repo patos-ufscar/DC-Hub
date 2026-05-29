@@ -7,11 +7,6 @@ use App\Core\Session;
 
 $user = Session::getUser();
 $csrfToken = Csrf::generateToken();
-$deepAtividade = isset($_GET['atividade']) ? (int) $_GET['atividade'] : 0;
-if ($deepAtividade <= 0) {
-    $deepAtividade = null;
-}
-
 $pageTitle = 'DC Hub — Calendário do Departamento de Computação';
 $pageDescription = 'Calendário de eventos e atividades do Departamento de Computação (UFSCar). '
     . 'Inscrições, presença por QR Code e certificados. Desenvolvido por PATOS.';
@@ -69,8 +64,7 @@ $ogImage = $pageUrl . '/assets/images/og-image.png';
             csrfToken: <?= json_encode($csrfToken) ?>,
             user: <?= json_encode($user) ?>,
             baseUrl: <?= json_encode(rtrim(dirname($_SERVER['SCRIPT_NAME']), '/')) ?>,
-            publicUrl: <?= json_encode(AppUrl::base()) ?>,
-            deepLink: { atividade: <?= json_encode($deepAtividade) ?> }
+            publicUrl: <?= json_encode(AppUrl::base()) ?>
         };
     </script>
 
@@ -108,6 +102,7 @@ $ogImage = $pageUrl . '/assets/images/og-image.png';
     <?php include __DIR__ . '/modals/admin-panel.php'; ?>
     <?php include __DIR__ . '/modals/role-request.php'; ?>
     <?php include __DIR__ . '/modals/create-choice.php'; ?>
+    <?php include __DIR__ . '/modals/events-panel.php'; ?>
     <?php include __DIR__ . '/modals/activities-panel.php'; ?>
     <?php include __DIR__ . '/modals/attendees-panel.php'; ?>
 
@@ -125,6 +120,7 @@ $ogImage = $pageUrl . '/assets/images/og-image.png';
     <script src="js/auth.js"></script>
     <script src="js/presence.js"></script>
     <script src="js/events.js"></script>
+    <script src="js/events-manage.js"></script>
     <script src="js/activities-manage.js"></script>
     <script src="js/admin.js"></script>
     <script src="js/certificate.js"></script>
