@@ -2,16 +2,9 @@
 <nav class="dc-topbar" role="navigation" aria-label="Navegação principal">
     <div class="dc-topbar-inner">
 
-        <div class="dc-topbar-head">
-            <a class="dc-brand" href="#" aria-label="DC Hub">
-                <img src="assets/images/logo.svg" alt="DC Hub" class="dc-brand-logo">
-            </a>
-
-            <button type="button" class="dc-menu-toggle" id="btnNavMenu"
-                    aria-label="Abrir menu" aria-expanded="false" aria-controls="navDrawer">
-                <i class="bi bi-list"></i>
-            </button>
-        </div>
+        <a class="dc-brand" href="#" aria-label="DC Hub">
+            <img src="assets/images/logo.svg" alt="DC Hub" class="dc-brand-logo">
+        </a>
 
         <div class="dc-month-nav">
             <button class="dc-arrow" id="btnPrevMonth" title="Anterior" aria-label="Anterior">
@@ -25,6 +18,11 @@
                 <i class="bi bi-chevron-right"></i>
             </button>
         </div>
+
+        <button type="button" class="dc-menu-toggle" id="btnNavMenu"
+                aria-label="Abrir menu" aria-expanded="false" aria-controls="navDrawer">
+            <i class="bi bi-list"></i>
+        </button>
 
         <div class="dc-nav-drawer" id="navDrawer">
             <div class="dc-filter">
