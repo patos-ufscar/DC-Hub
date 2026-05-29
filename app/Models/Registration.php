@@ -8,16 +8,48 @@ use PDO;
 
 class Registration
 {
+    private bool $sqliteImmediateTx = false;
+
     public function __construct(private PDO $db) {}
+
+    private function beginReservationTx(): void
+    {
+        if (DatabaseDialect::isSqlite()) {
+            $this->db->exec('BEGIN IMMEDIATE');
+            $this->sqliteImmediateTx = true;
+            return;
+        }
+        $this->db->beginTransaction();
+    }
+
+    private function commitReservationTx(): void
+    {
+        if ($this->sqliteImmediateTx) {
+            $this->db->exec('COMMIT');
+            $this->sqliteImmediateTx = false;
+            return;
+        }
+        if ($this->db->inTransaction()) {
+            $this->db->commit();
+        }
+    }
+
+    private function rollBackReservationTx(): void
+    {
+        if ($this->sqliteImmediateTx) {
+            $this->db->exec('ROLLBACK');
+            $this->sqliteImmediateTx = false;
+            return;
+        }
+        if ($this->db->inTransaction()) {
+            $this->db->rollBack();
+        }
+    }
 
     public function toggleRsvp(int $userId, int $atividadeId): string
     {
         try {
-            if (\App\Core\DatabaseDialect::isSqlite()) {
-                $this->db->exec('BEGIN IMMEDIATE');
-            } else {
-                $this->db->beginTransaction();
-            }
+            $this->beginReservationTx();
 
             $stmt = $this->db->prepare(
                 'SELECT id, status FROM inscricoes WHERE user_id = :uid AND atividade_id = :aid'
@@ -29,14 +61,14 @@ class Registration
 
             if ($existing) {
                 if ($existing['status'] === 'presente') {
-                    $this->db->commit();
+                    $this->commitReservationTx();
                     return 'presente';
                 }
 
                 $del = $this->db->prepare('DELETE FROM inscricoes WHERE id = :id');
                 $del->bindValue(':id', (int) $existing['id'], PDO::PARAM_INT);
                 $del->execute();
-                $this->db->commit();
+                $this->commitReservationTx();
 
                 return 'removed';
             }
@@ -49,7 +81,7 @@ class Registration
             $limitRow = $limitStmt->fetch();
 
             if (!$limitRow) {
-                $this->db->rollBack();
+                $this->rollBackReservationTx();
                 return 'full';
             }
 
@@ -57,7 +89,7 @@ class Registration
                 $limit = (int) $limitRow['vagas_limite'];
                 $occupied = $this->countOccupiedSpots($atividadeId);
                 if ($occupied >= $limit) {
-                    $this->db->commit();
+                    $this->commitReservationTx();
                     return 'full';
                 }
             }
@@ -69,13 +101,11 @@ class Registration
             $ins->bindValue(':aid', $atividadeId, PDO::PARAM_INT);
             $ins->execute();
 
-            $this->db->commit();
+            $this->commitReservationTx();
 
             return 'rsvp';
         } catch (\Throwable $e) {
-            if ($this->db->inTransaction()) {
-                $this->db->rollBack();
-            }
+            $this->rollBackReservationTx();
             throw $e;
         }
     }
