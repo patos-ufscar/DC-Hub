@@ -12,7 +12,35 @@
                 </div>
                 <p id="detailEventDesc" class="text-muted"></p>
 
-                <h6 class="mt-4 mb-3"><i class="bi bi-list-ul me-2"></i>Atividades</h6>
+                <div class="event-share-box mb-3" id="detailEventShare">
+                    <label class="form-label small text-muted mb-1">Link do evento (compartilhar / inscrições)</label>
+                    <div class="input-group input-group-sm">
+                        <input type="text" class="form-control font-monospace" id="eventShareUrl" readonly>
+                        <button type="button" class="btn btn-outline-secondary" id="btnCopyEventLink" title="Copiar link">
+                            <i class="bi bi-clipboard"></i>
+                        </button>
+                    </div>
+                </div>
+
+                <div id="detailEventRegistration" class="mb-4 d-none">
+                    <h6 class="mb-2"><i class="bi bi-check2-square me-2"></i>Inscrições</h6>
+                    <p class="small text-muted mb-2">Marque as atividades desejadas ou use a opção geral para todas.</p>
+                    <div class="form-check mb-2 auth-only d-none" id="detailRsvpAllWrap">
+                        <input class="form-check-input" type="checkbox" id="detailRsvpAll">
+                        <label class="form-check-label" for="detailRsvpAll">Inscrever em todas as atividades</label>
+                    </div>
+                    <div id="detailRsvpPickList" class="mb-2 auth-only d-none"></div>
+                    <div class="d-flex flex-wrap gap-2">
+                        <button type="button" class="btn btn-sm btn-dc-primary auth-only d-none" id="btnDetailBulkRsvp">
+                            <i class="bi bi-check-circle me-1"></i>Confirmar inscrições
+                        </button>
+                        <button type="button" class="btn btn-sm btn-dc-primary guest-only" id="btnDetailLoginForRsvp">
+                            <i class="bi bi-box-arrow-in-right me-1"></i>Entrar para se inscrever
+                        </button>
+                    </div>
+                </div>
+
+                <h6 class="mt-2 mb-3"><i class="bi bi-list-ul me-2"></i>Atividades</h6>
                 <div id="detailActivitiesList">
                     <!-- Dynamically populated -->
                 </div>

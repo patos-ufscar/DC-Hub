@@ -25,6 +25,49 @@ class RegistrationController
         $this->rateLimiter   = new RateLimiter($db);
     }
 
+    public function bulkRsvp(): void
+    {
+        if (!Session::isLoggedIn()) {
+            Response::error('Não autenticado.', 401);
+        }
+        if (!Csrf::validateRequest()) {
+            Response::error('Token CSRF inválido.', 403);
+        }
+
+        $eventoId = (int) ($_POST['evento_id'] ?? 0);
+        if ($eventoId <= 0) {
+            Response::error('Evento inválido.');
+        }
+
+        $eventModel = new \App\Models\Event($this->db);
+        $event = $eventModel->findById($eventoId);
+        if (!$event) {
+            Response::error('Evento não encontrado.', 404);
+        }
+
+        $rawIds = $_POST['atividade_ids'] ?? [];
+        if (!is_array($rawIds)) {
+            $rawIds = [];
+        }
+        $atividadeIds = array_values(array_filter(array_map('intval', $rawIds), static fn (int $id) => $id > 0));
+
+        $userId = (int) Session::get('user_id');
+        $result = $this->regModel->bulkRsvp($userId, $eventoId, $atividadeIds);
+
+        $msg = [];
+        if ($result['inscritos'] > 0) {
+            $msg[] = $result['inscritos'] . ' inscrição(ões) confirmada(s)';
+        }
+        if ($result['ja_inscritos'] > 0) {
+            $msg[] = $result['ja_inscritos'] . ' já estavam inscritas';
+        }
+        if (count($result['esgotados']) > 0) {
+            $msg[] = count($result['esgotados']) . ' com vagas esgotadas';
+        }
+
+        Response::success($msg !== [] ? implode('. ', $msg) . '.' : 'Nenhuma alteração.', $result);
+    }
+
     public function toggleRsvp(): void
     {
         if (!Session::isLoggedIn()) {

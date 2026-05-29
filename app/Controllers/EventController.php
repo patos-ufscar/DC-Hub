@@ -108,6 +108,30 @@ class EventController
         Response::success('Evento removido.');
     }
 
+    public function listManage(): void
+    {
+        if (!Session::isLoggedIn()) {
+            Response::error('Não autenticado.', 401);
+        }
+
+        $role = Session::get('user_role');
+        if (!in_array($role, ['proj', 'adm'], true)) {
+            Response::error('Sem permissão.', 403);
+        }
+
+        $grupoId = null;
+        if ($role === 'proj') {
+            $grupoId = (int) Session::get('user_grupo_id');
+            if ($grupoId <= 0) {
+                Response::json(['success' => true, 'events' => []]);
+            }
+        }
+
+        $events = $this->eventModel->listForManage($grupoId);
+
+        Response::json(['success' => true, 'events' => $events]);
+    }
+
     public function list(): void
     {
         $grupoId = !empty($_GET['grupo_id']) ? (int) $_GET['grupo_id'] : null;
@@ -140,7 +164,9 @@ class EventController
             $regModel = new \App\Models\Registration($this->db);
             $userId = (int) Session::get('user_id');
             foreach ($activities as &$activity) {
-                $activity['usuario_inscrito'] = $regModel->getUserStatus($userId, (int) $activity['id']) !== null;
+                $status = $regModel->getUserStatus($userId, (int) $activity['id']);
+                $activity['usuario_inscrito'] = $status !== null;
+                $activity['usuario_status'] = $status;
                 $activity['vagas_disponiveis'] = $activity['vagas_limite'] === null
                     ? null
                     : max(0, (int) $activity['vagas_limite'] - (int) $activity['vagas_ocupadas']);
@@ -149,6 +175,7 @@ class EventController
         }
 
         $event['atividades'] = $activities;
+        $event['share_path'] = '?evento=' . $id;
 
         Response::json([
             'success' => true,

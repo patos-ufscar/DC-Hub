@@ -65,6 +65,9 @@
                     <a class="dc-drawer-link user-only d-none" href="#" data-bs-toggle="modal" data-bs-target="#roleRequestModal">
                         <i class="bi bi-person-plus me-2"></i>Solicitar Projeto de Extensão
                     </a>
+                    <a class="dc-drawer-link manage-only d-none" href="#" data-bs-toggle="modal" data-bs-target="#eventsPanelModal">
+                        <i class="bi bi-calendar2-event me-2"></i>Gerenciar Eventos
+                    </a>
                     <a class="dc-drawer-link manage-only d-none" href="#" data-bs-toggle="modal" data-bs-target="#activitiesPanelModal">
                         <i class="bi bi-kanban me-2"></i>Gerenciar Atividades
                     </a>
@@ -105,6 +108,11 @@
                         <li class="user-only d-none">
                             <a class="dropdown-item" href="#" data-bs-toggle="modal" data-bs-target="#roleRequestModal">
                                 <i class="bi bi-person-plus me-2"></i>Solicitar Projeto de Extensão
+                            </a>
+                        </li>
+                        <li class="manage-only d-none">
+                            <a class="dropdown-item" href="#" data-bs-toggle="modal" data-bs-target="#eventsPanelModal">
+                                <i class="bi bi-calendar2-event me-2"></i>Gerenciar Eventos
                             </a>
                         </li>
                         <li class="manage-only d-none">

@@ -6,8 +6,20 @@
  */
 const Auth = (() => {
 
-    function reopenActivityFromUrl() {
-        let id = new URLSearchParams(window.location.search).get('atividade');
+    function reopenDeepLinkAfterAuth() {
+        const params = new URLSearchParams(window.location.search);
+        let eventoId = params.get('evento');
+        if (!eventoId) {
+            try {
+                eventoId = sessionStorage.getItem('dc_pending_evento');
+            } catch { /* ignore */ }
+        }
+        if (eventoId && window.Events?.showEventDetail) {
+            setTimeout(() => Events.showEventDetail(eventoId), 350);
+            return;
+        }
+
+        let id = params.get('atividade');
         if (!id) {
             try {
                 id = sessionStorage.getItem('dc_pending_atividade');
@@ -31,7 +43,7 @@ const Auth = (() => {
                 App.toast('Bem-vindo!', 'success');
                 App.updateUIForAuth();
                 Calendar.loadActivities();
-                reopenActivityFromUrl();
+                reopenDeepLinkAfterAuth();
             } else {
                 App.showFormError('loginError', res.error || 'Erro ao entrar.');
             }
@@ -53,7 +65,7 @@ const Auth = (() => {
                 App.toast('Cadastro realizado!', 'success');
                 App.updateUIForAuth();
                 Calendar.loadActivities();
-                reopenActivityFromUrl();
+                reopenDeepLinkAfterAuth();
             } else {
                 App.showFormError('registerError', res.error || 'Erro no cadastro.');
             }

@@ -33,6 +33,7 @@ try {
         'event.update'         => (new App\Controllers\EventController($db))->update(),
         'event.delete'         => (new App\Controllers\EventController($db))->delete(),
         'event.list'           => (new App\Controllers\EventController($db))->list(),
+        'event.listManage'     => (new App\Controllers\EventController($db))->listManage(),
         'event.detail'         => (new App\Controllers\EventController($db))->detail(),
 
         // Activities
@@ -50,6 +51,7 @@ try {
 
         // RSVP & Registration
         'registration.toggle'           => (new App\Controllers\RegistrationController($db))->toggleRsvp(),
+        'registration.bulkRsvp'         => (new App\Controllers\RegistrationController($db))->bulkRsvp(),
         'registration.dashboard'        => (new App\Controllers\RegistrationController($db))->dashboard(),
         'registration.attendees'        => (new App\Controllers\RegistrationController($db))->attendees(),
         'registration.validate'         => (new App\Controllers\RegistrationController($db))->validatePresence(),

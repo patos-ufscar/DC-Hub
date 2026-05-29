@@ -151,6 +151,18 @@ class ActivityController
 
         $data = ['success' => true, 'activity' => $activity];
 
+        if (!empty($activity['evento_id'])) {
+            $event = $this->eventModel->findById((int) $activity['evento_id']);
+            if ($event) {
+                $data['event'] = [
+                    'id'        => (int) $event['id'],
+                    'titulo'    => $event['titulo'],
+                    'descricao' => $event['descricao'],
+                    'grupo_nome'=> $event['grupo_nome'],
+                ];
+            }
+        }
+
         if (Session::isLoggedIn()) {
             $regModel = new \App\Models\Registration($this->db);
             $userId = (int) Session::get('user_id');

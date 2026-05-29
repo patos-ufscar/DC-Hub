@@ -388,4 +388,58 @@ class Registration
             'status'        => 'presente',
         ];
     }
+
+    /**
+     * Inscreve o usuário em várias atividades de um evento.
+     *
+     * @param int[] $atividadeIds IDs específicos; vazio = todas do evento
+     * @return array{inscritos: int, ja_inscritos: int, esgotados: int[], erros: string[]}
+     */
+    public function bulkRsvp(int $userId, int $eventoId, array $atividadeIds): array
+    {
+        if ($atividadeIds === []) {
+            $stmt = $this->db->prepare('SELECT id FROM atividades WHERE evento_id = :eid');
+            $stmt->bindValue(':eid', $eventoId, PDO::PARAM_INT);
+            $stmt->execute();
+            $atividadeIds = array_map('intval', array_column($stmt->fetchAll(), 'id'));
+        }
+
+        $inscritos = 0;
+        $jaInscritos = 0;
+        $esgotados = [];
+        $erros = [];
+
+        foreach ($atividadeIds as $atividadeId) {
+            $check = $this->db->prepare(
+                'SELECT id FROM atividades WHERE id = :aid AND evento_id = :eid'
+            );
+            $check->bindValue(':aid', $atividadeId, PDO::PARAM_INT);
+            $check->bindValue(':eid', $eventoId, PDO::PARAM_INT);
+            $check->execute();
+            if (!$check->fetch()) {
+                $erros[] = "Atividade #{$atividadeId} não pertence ao evento.";
+                continue;
+            }
+
+            $status = $this->getUserStatus($userId, $atividadeId);
+            if ($status === 'presente' || $status === 'rsvp') {
+                $jaInscritos++;
+                continue;
+            }
+
+            $result = $this->toggleRsvp($userId, $atividadeId);
+            if ($result === 'rsvp') {
+                $inscritos++;
+            } elseif ($result === 'full') {
+                $esgotados[] = $atividadeId;
+            }
+        }
+
+        return [
+            'inscritos'     => $inscritos,
+            'ja_inscritos'  => $jaInscritos,
+            'esgotados'     => $esgotados,
+            'erros'         => $erros,
+        ];
+    }
 }
