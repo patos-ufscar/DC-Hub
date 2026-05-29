@@ -11,8 +11,14 @@ final class EnvLoader
             return;
         }
 
+        if (!is_readable($path)) {
+            error_log('DC-Hub: .env existe mas não é legível por ' . (PHP_SAPI === 'cli' ? 'CLI' : 'web') . ": {$path}");
+            return;
+        }
+
         $lines = file($path, FILE_IGNORE_NEW_LINES | FILE_SKIP_EMPTY_LINES);
         if ($lines === false) {
+            error_log("DC-Hub: falha ao ler .env: {$path}");
             return;
         }
 
@@ -30,9 +36,8 @@ final class EnvLoader
 
             $key = trim(substr($line, 0, $pos));
             $key = preg_replace('/^\xEF\xBB\xBF/', '', $key) ?? $key;
-            $value = trim(substr($line, $pos + 1));
+            $value = trim(substr($line, $pos + 1), " \t\n\r\0\x0B");
 
-            // Remove surrounding quotes
             if (
                 (str_starts_with($value, '"') && str_ends_with($value, '"')) ||
                 (str_starts_with($value, "'") && str_ends_with($value, "'"))
@@ -40,7 +45,7 @@ final class EnvLoader
                 $value = substr($value, 1, -1);
             }
 
-            $_ENV[$key] = $value;
+            $_ENV[$key] = trim($value);
             putenv($key . '=' . $value);
         }
     }

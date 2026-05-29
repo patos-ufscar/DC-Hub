@@ -208,9 +208,18 @@ const App = (() => {
         return hostname === 'localhost' || hostname === '127.0.0.1' || hostname === '[::1]';
     }
 
+    /** APP_URL do servidor (atributo data-public-url no &lt;html&gt; ou DCHub.publicUrl). */
+    function serverPublicUrl() {
+        const fromHtml = document.documentElement.getAttribute('data-public-url')?.trim();
+        if (fromHtml) {
+            return fromHtml.replace(/\/$/, '');
+        }
+        return (cfg.publicUrl || '').trim().replace(/\/$/, '');
+    }
+
     /** Base absoluta para links compartilháveis (APP_URL no servidor). */
     function publicBaseUrl() {
-        let configured = (cfg.publicUrl || '').trim().replace(/\/$/, '');
+        let configured = serverPublicUrl();
         if (configured) {
             try {
                 const parsed = new URL(configured);
