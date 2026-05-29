@@ -7,3 +7,4 @@ database/*.sqlite
 database/*.sqlite-journal
 database/*.sqlite-wal
 database/*.sqlite-shm
+backups/

@@ -145,6 +145,15 @@ A página principal é servida sem `action` (SPA leve com modais em JavaScript).
 
 ---
 
+## CI/CD e produção
+
+- **CI:** em cada PR para `main`, roda verificação de sintaxe PHP (`.github/workflows/ci.yml`)
+- **Deploy:** após merge na `main`, deploy automático via SSH/rsync (`.github/workflows/deploy.yml`)
+- **Main protegida:** use PRs; configure com [`docs/DEPLOY.md`](docs/DEPLOY.md) ou `scripts/github/setup-branch-protection.sh`
+- **Backup:** cron diário no servidor mantém ~31 dias de cópias do SQLite (`scripts/deploy/backup-sqlite.sh`)
+
+---
+
 ## Como contribuir
 
 1. **Fork** o repositório e crie um branch a partir de `main`:
@@ -178,6 +187,7 @@ A página principal é servida sem `action` (SPA leve com modais em JavaScript).
 
 - [`requisitos.md`](requisitos.md) — requisitos funcionais do MVP
 - [`guiaVisual.md`](guiaVisual.md) — guia visual / identidade
+- [`docs/DEPLOY.md`](docs/DEPLOY.md) — CI/CD, Apache, secrets, backup SQLite
 
 ---
 

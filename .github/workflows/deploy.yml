@@ -1,0 +1,90 @@
+name: Deploy Production
+
+# Roda após merge na main (push). Proteja a main contra push direto — ver docs/DEPLOY.md
+on:
+  push:
+    branches: [main]
+
+concurrency:
+  group: production-deploy
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+jobs:
+  deploy:
+    name: Deploy via SSH
+    runs-on: ubuntu-latest
+    environment: production
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup PHP
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.2'
+          coverage: none
+
+      - name: PHP syntax check
+        run: |
+          find app public cron scripts -name '*.php' -print0 | xargs -0 -n1 php -l
+
+      - name: Setup SSH agent
+        uses: webfactory/ssh-agent@v0.9.0
+        with:
+          ssh-private-key: ${{ secrets.SSH_PRIVATE_KEY }}
+
+      - name: Add server to known_hosts
+        run: |
+          mkdir -p ~/.ssh
+          chmod 700 ~/.ssh
+          ssh-keyscan -p "${{ secrets.SSH_PORT || 22 }}" -H "${{ secrets.SSH_HOST }}" >> ~/.ssh/known_hosts
+
+      - name: Deploy application (rsync)
+        env:
+          SSH_PORT: ${{ secrets.SSH_PORT || 22 }}
+          SSH_USER: ${{ secrets.SSH_USER }}
+          SSH_HOST: ${{ secrets.SSH_HOST }}
+          DEPLOY_PATH: ${{ secrets.DEPLOY_PATH }}
+        run: |
+          set -euo pipefail
+          RSYNC_SSH="ssh -p ${SSH_PORT} -o StrictHostKeyChecking=yes"
+          rsync -avz --delete \
+            --exclude '.git/' \
+            --exclude '.github/' \
+            --exclude '.env' \
+            --exclude '.env.*' \
+            --exclude 'database/*.sqlite' \
+            --exclude 'database/*.sqlite-*' \
+            --exclude 'backups/' \
+            --exclude 'vendor/' \
+            -e "${RSYNC_SSH}" \
+            ./ "${SSH_USER}@${SSH_HOST}:${DEPLOY_PATH}/"
+
+      - name: Post-deploy on server
+        env:
+          SSH_PORT: ${{ secrets.SSH_PORT || 22 }}
+          SSH_USER: ${{ secrets.SSH_USER }}
+          SSH_HOST: ${{ secrets.SSH_HOST }}
+          DEPLOY_PATH: ${{ secrets.DEPLOY_PATH }}
+          WEB_USER: ${{ secrets.WEB_SERVER_USER }}
+        run: |
+          set -euo pipefail
+          ssh -p "${SSH_PORT}" "${SSH_USER}@${SSH_HOST}" bash -s <<REMOTE
+          set -euo pipefail
+          cd "${DEPLOY_PATH}"
+          mkdir -p database backups/sqlite
+          chmod 755 database backups backups/sqlite scripts/deploy
+          chmod +x scripts/deploy/*.sh 2>/dev/null || true
+          if [ ! -f .env ]; then
+            echo "ERRO: arquivo .env ausente em ${DEPLOY_PATH}"
+            exit 1
+          fi
+          WEB_USER="${WEB_USER:-www-data}"
+          if id "${WEB_USER}" >/dev/null 2>&1; then
+            chown -R "${WEB_USER}:${WEB_USER}" database backups
+            chmod -R 775 database backups
+          fi
+          echo "Deploy concluído em \$(date -Iseconds)"
+          REMOTE

@@ -1,0 +1,28 @@
+# Exemplo de VirtualHost Apache para DC Hub
+# Copie para /etc/apache2/sites-available/dc-hub.conf e ajuste ServerName / caminhos.
+#
+# sudo a2enmod rewrite
+# sudo a2ensite dc-hub
+# sudo systemctl reload apache2
+
+<VirtualHost *:80>
+    ServerName dchub.seudominio.br
+    DocumentRoot /var/www/dc-hub/public
+
+    <Directory /var/www/dc-hub/public>
+        Options -Indexes +FollowSymLinks
+        AllowOverride All
+        Require all granted
+    </Directory>
+
+    ErrorLog ${APACHE_LOG_DIR}/dc-hub-error.log
+    CustomLog ${APACHE_LOG_DIR}/dc-hub-access.log combined
+</VirtualHost>
+
+# HTTPS (recomendado — use certbot):
+# <VirtualHost *:443>
+#     ServerName dchub.seudominio.br
+#     DocumentRoot /var/www/dc-hub/public
+#     SSLEngine on
+#     ...
+# </VirtualHost>
