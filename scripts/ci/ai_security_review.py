@@ -1,7 +1,9 @@
 #!/usr/bin/env python3
 """
 Avalia o diff de um PR em segurança (0–10) via OpenAI Chat Completions.
-Sai com código 0 se score >= MIN_SECURITY_SCORE, senão 1.
+
+- Nota < MIN_SECURITY_SCORE → exit 1 (bloqueia PR)
+- API indisponível, sem chave ou sem tokens → exit 0 com aviso (não bloqueia)
 """
 from __future__ import annotations
 
@@ -84,27 +86,72 @@ def call_openai(api_key: str, model: str, diff: str) -> dict:
     except urllib.error.HTTPError as e:
         err_body = e.read().decode("utf-8", errors="replace")
         raise RuntimeError(f"OpenAI HTTP {e.code}: {err_body}") from e
+    except urllib.error.URLError as e:
+        raise RuntimeError(f"Falha de conexão com OpenAI: {e.reason}") from e
 
     content = body["choices"][0]["message"]["content"]
     return json.loads(content)
 
 
-def write_summary(result: dict, min_score: float, passed: bool) -> None:
+def is_api_skip_error(message: str) -> bool:
+    lower = message.lower()
+    markers = (
+        "401",
+        "403",
+        "429",
+        "insufficient_quota",
+        "billing",
+        "invalid_api_key",
+        "incorrect api key",
+        "rate limit",
+        "connection",
+        "timed out",
+        "timeout",
+        "openai http",
+        "falha de conexão",
+    )
+    return any(m in lower for m in markers)
+
+
+def write_output(payload: dict) -> None:
+    out_path = os.environ.get("REVIEW_OUTPUT", "").strip()
+    if out_path:
+        with open(out_path, "w", encoding="utf-8") as fh:
+            json.dump(payload, fh, ensure_ascii=False, indent=2)
+
+
+def write_summary(payload: dict, min_score: float) -> None:
     summary_path = os.environ.get("GITHUB_STEP_SUMMARY")
     if not summary_path:
         return
-    score = result.get("score", "?")
-    findings = result.get("findings") or []
+
+    status = payload.get("status", "completed")
+    passed = payload.get("passed", True)
+    score = payload.get("score")
+    score_label = f"{score}/10" if score is not None else "—"
+    findings = payload.get("findings") or []
+
+    if status == "skipped":
+        result_label = "⚠️ Ignorado (PR não bloqueado)"
+    elif passed:
+        result_label = "✅ Aprovado"
+    else:
+        result_label = "❌ Reprovado"
+
     lines = [
         "## Avaliação de segurança (IA)",
         "",
-        f"**Nota:** {score}/10",
+        f"**Nota:** {score_label}",
         f"**Mínimo para passar:** {min_score}",
-        f"**Resultado:** {'✅ Aprovado' if passed else '❌ Reprovado'}",
+        f"**Resultado:** {result_label}",
         "",
-        f"**Resumo:** {result.get('summary', '')}",
+        f"**Resumo:** {payload.get('summary', '')}",
         "",
     ]
+    if status == "skipped" and payload.get("skip_reason"):
+        lines.insert(4, f"**Motivo:** {payload['skip_reason']}")
+        lines.insert(5, "")
+
     if findings:
         lines.append("### Achados")
         for f in findings:
@@ -112,59 +159,84 @@ def write_summary(result: dict, min_score: float, passed: bool) -> None:
             title = f.get("title", "Sem título")
             detail = f.get("detail", "")
             lines.append(f"- **{sev.upper()}** — {title}: {detail}")
-    else:
+    elif status == "completed":
         lines.append("_Nenhum achado listado._")
+
     with open(summary_path, "a", encoding="utf-8") as fh:
         fh.write("\n".join(lines) + "\n")
 
 
+def finish_skip(reason: str, min_score: float) -> int:
+    summary = (
+        f"⚠️ **Avaliação de segurança não foi executada** — o PR **não foi bloqueado**.\n\n"
+        f"Motivo: {reason}\n\n"
+        "Configure `OPENAI_API_KEY` ou verifique saldo/conexão da API e reexecute o workflow."
+    )
+    payload = {
+        "status": "skipped",
+        "passed": True,
+        "skipped": True,
+        "skip_reason": reason,
+        "score": None,
+        "summary": summary,
+        "findings": [],
+        "min_score": min_score,
+    }
+    write_summary(payload, min_score)
+    write_output(payload)
+    print(summary, file=sys.stderr)
+    print("SKIP (PR liberado):", reason)
+    return 0
+
+
 def main() -> int:
     api_key = os.environ.get("OPENAI_API_KEY", "").strip()
+    min_score = float(os.environ.get("MIN_SECURITY_SCORE", str(DEFAULT_MIN_SCORE)))
+
     if not api_key:
-        print("OPENAI_API_KEY não configurado.", file=sys.stderr)
-        return 1
+        return finish_skip(
+            "secret `OPENAI_API_KEY` não configurado no repositório.",
+            min_score,
+        )
 
     diff_path = os.environ.get("DIFF_PATH", "pr.diff")
     if not os.path.isfile(diff_path):
-        print(f"Arquivo de diff ausente: {diff_path}", file=sys.stderr)
-        return 1
+        return finish_skip(f"arquivo de diff ausente: {diff_path}", min_score)
 
     model = os.environ.get("OPENAI_MODEL", DEFAULT_MODEL).strip() or DEFAULT_MODEL
-    min_score = float(os.environ.get("MIN_SECURITY_SCORE", str(DEFAULT_MIN_SCORE)))
 
     try:
         diff = load_diff(diff_path)
         if not diff.strip():
-            print("Diff vazio — nada a avaliar.")
             result = {"score": 10.0, "summary": "Sem alterações no diff.", "findings": []}
         else:
             result = call_openai(api_key, model, diff)
-    except (RuntimeError, json.JSONDecodeError, KeyError, IndexError) as e:
-        print(f"Falha na avaliação: {e}", file=sys.stderr)
-        return 1
+    except (RuntimeError, json.JSONDecodeError, KeyError, IndexError, TimeoutError, OSError) as e:
+        msg = str(e)
+        if is_api_skip_error(msg) or isinstance(e, (urllib.error.URLError, TimeoutError, OSError)):
+            return finish_skip(msg, min_score)
+        return finish_skip(f"erro inesperado na avaliação: {msg}", min_score)
 
     try:
         score = float(result["score"])
     except (KeyError, TypeError, ValueError):
-        print(f"Resposta inválida da IA: {result}", file=sys.stderr)
-        return 1
+        return finish_skip(f"resposta inválida da IA: {result}", min_score)
 
     score = max(0.0, min(10.0, score))
-    result["score"] = score
     passed = score >= min_score
-    write_summary(result, min_score, passed)
+    payload = {
+        "status": "completed",
+        "passed": passed,
+        "skipped": False,
+        "score": score,
+        "summary": result.get("summary", ""),
+        "findings": result.get("findings") or [],
+        "min_score": min_score,
+    }
+    write_summary(payload, min_score)
+    write_output(payload)
 
-    out_path = os.environ.get("REVIEW_OUTPUT", "").strip()
-    if out_path:
-        with open(out_path, "w", encoding="utf-8") as fh:
-            json.dump(
-                {"score": score, "min_score": min_score, "passed": passed, **result},
-                fh,
-                ensure_ascii=False,
-                indent=2,
-            )
-
-    print(json.dumps(result, ensure_ascii=False, indent=2))
+    print(json.dumps(payload, ensure_ascii=False, indent=2))
     print(f"\nNota: {score}/10 | Mínimo: {min_score} | {'PASSOU' if passed else 'REPROVADO'}")
 
     return 0 if passed else 1

@@ -15,6 +15,7 @@ Workflow: `.github/workflows/ai-security-review.yml`
 - A IA devolve uma nota de **0 a 10** sobre o **diff do PR** (foco em PHP / AppSec).
 - **Nota &lt; 7 → merge bloqueado** (job `AI security review` falha).
 - **Nota ≥ 7 → passa** (desde que os outros checks também passem).
+- **Sem `OPENAI_API_KEY`, sem saldo/tokens ou falha de conexão → PR passa** com aviso no comentário e no summary do workflow (não bloqueia).
 
 ## Opcional
 
