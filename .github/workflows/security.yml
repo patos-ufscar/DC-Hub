@@ -1,0 +1,43 @@
+name: Security
+
+on:
+  pull_request:
+    branches: [main]
+
+permissions:
+  contents: read
+  pull-requests: read
+
+jobs:
+  gitleaks:
+    name: Gitleaks
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      # CLI open source (a gitleaks-action@v2 exige licença em orgs)
+      - name: Install Gitleaks
+        run: |
+          GITLEAKS_VERSION=8.24.3
+          curl -sSL "https://github.com/gitleaks/gitleaks/releases/download/v${GITLEAKS_VERSION}/gitleaks_${GITLEAKS_VERSION}_linux_x64.tar.gz" \
+            | tar -xz -C /usr/local/bin gitleaks
+
+      - name: Scan for secrets
+        run: gitleaks detect --source . --redact --verbose
+
+  semgrep:
+    name: Semgrep
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: returntocorp/semgrep-action@v1
+        with:
+          config: >-
+            p/php
+            p/security-audit
+        env:
+          # Bloqueia o PR se encontrar achados HIGH ou CRITICAL
+          SEMGREP_ARGS: --severity HIGH --error

@@ -3,7 +3,7 @@
 ## Fluxo
 
 1. Desenvolvimento em branch de feature
-2. **Pull Request** para `main` (CI roda `php -l` em cada PR)
+2. **Pull Request** para `main` (CI: sintaxe PHP, Gitleaks, Semgrep)
 3. Após **merge** do PR → workflow **Deploy Production** envia o código via **SSH/rsync**
 4. No servidor: Apache aponta para `public/`, SQLite em `database/`, backup diário via cron
 
@@ -16,7 +16,7 @@ A branch `main` **não deve receber push direto** — use proteção de branch (
 No GitHub: **Settings → Branches → Add branch protection rule** para `main`:
 
 - [x] Require a pull request before merging
-- [x] Require status checks to pass (selecione **PHP syntax check** do workflow CI)
+- [x] Require status checks to pass: **PHP syntax check**, **Gitleaks**, **Semgrep**
 - [x] Do not allow bypassing the above settings
 - [ ] Restrict who can push (opcional)
 
@@ -25,7 +25,7 @@ Ou via CLI (admin do repositório):
 ```bash
 gh api repos/patos-ufscar/DC-Hub/branches/main/protection \
   --method PUT \
-  --field required_status_checks='{"strict":true,"checks":[{"context":"PHP syntax check"}]}' \
+  --field required_status_checks='{"strict":true,"checks":[{"context":"PHP syntax check"},{"context":"Gitleaks"},{"context":"Semgrep"}]}' \
   --field enforce_admins=true \
   --field required_pull_request_reviews='{"required_approving_review_count":0}' \
   --field restrictions=null
