@@ -1,6 +1,7 @@
 <?php
 declare(strict_types=1);
 
+use App\Core\AppUrl;
 use App\Core\Csrf;
 use App\Core\Session;
 
@@ -37,6 +38,7 @@ if ($deepAtividade <= 0) {
             csrfToken: <?= json_encode($csrfToken) ?>,
             user: <?= json_encode($user) ?>,
             baseUrl: <?= json_encode(rtrim(dirname($_SERVER['SCRIPT_NAME']), '/')) ?>,
+            publicUrl: <?= json_encode(AppUrl::base()) ?>,
             deepLink: { atividade: <?= json_encode($deepAtividade) ?> }
         };
     </script>

@@ -204,24 +204,40 @@ const App = (() => {
         return timeStr ? timeStr.substring(0, 5) : '';
     }
 
-    function activityUrl(activityId) {
+    /** Base absoluta para links compartilháveis (APP_URL no servidor). */
+    function publicBaseUrl() {
+        const configured = (cfg.publicUrl || '').trim().replace(/\/$/, '');
+        if (configured) {
+            return configured;
+        }
         const base = (cfg.baseUrl || '.').replace(/\/$/, '');
         const path = base === '.' ? window.location.pathname.replace(/\/[^/]*$/, '') || '' : base;
         const root = path.endsWith('/') ? path.slice(0, -1) : path;
-        const prefix = root || '';
-        return `${window.location.origin}${prefix}/?atividade=${activityId}`;
+        return `${window.location.origin}${root || ''}`;
+    }
+
+    /** URL absoluta da atividade (copiar / compartilhar). */
+    function activityUrl(activityId) {
+        return `${publicBaseUrl()}/?atividade=${activityId}`;
+    }
+
+    /** URL na barra do navegador (mantém host atual em dev). */
+    function browserBaseUrl() {
+        const base = (cfg.baseUrl || '.').replace(/\/$/, '');
+        const path = base === '.' ? window.location.pathname.replace(/\/[^/]*$/, '') || '' : base;
+        const root = path.endsWith('/') ? path.slice(0, -1) : path;
+        return `${window.location.origin}${root || ''}`;
     }
 
     function setActivityUrl(activityId) {
-        const url = activityId ? activityUrl(activityId) : buildHomeUrl();
+        const url = activityId
+            ? `${browserBaseUrl()}/?atividade=${activityId}`
+            : `${browserBaseUrl()}/`;
         history.replaceState({ atividade: activityId || null }, '', url);
     }
 
     function buildHomeUrl() {
-        const base = (cfg.baseUrl || '.').replace(/\/$/, '');
-        const path = base === '.' ? window.location.pathname.replace(/\/[^/]*$/, '') || '' : base;
-        const root = path.endsWith('/') ? path.slice(0, -1) : path;
-        return `${window.location.origin}${root || ''}/`;
+        return `${browserBaseUrl()}/`;
     }
 
     async function copyToClipboard(text) {

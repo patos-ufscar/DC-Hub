@@ -98,6 +98,8 @@ cp .env.example .env
 
 Edite `.env` se necessário. O padrão usa **SQLite** em `database/dc_hub.sqlite`.
 
+Defina `APP_URL` com a URL pública do site em produção (ex.: `https://dchub.seudominio.br`) para que os **links de compartilhamento** de atividades não usem `localhost`.
+
 ### 2. Inicializar o banco (opcional)
 
 O SQLite é criado automaticamente na primeira requisição. Para forçar criação e seeds:
@@ -181,8 +183,8 @@ A página principal é servida sem `action` (SPA leve com modais em JavaScript).
 
 ## Licença
 
-Consulte os mantenedores do repositório (PATOS / DC-UFSCar) para informações de licenciamento.
+[LICENSE](LICENSE)
 
 ---
 
-Desenvolvido para a comunidade do Departamento de Computação — UFSCar.
+Desenvolvido por PATOS para a comunidade do Departamento de Computação — UFSCar.
