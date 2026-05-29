@@ -84,10 +84,6 @@ button,
     flex-wrap: wrap;
 }
 
-.dc-topbar-head {
-    display: contents;
-}
-
 .dc-nav-drawer {
     display: contents;
 }
@@ -723,8 +719,10 @@ button,
 .modal {
     position: fixed;
     inset: 0;
-    width: 100vw;
-    height: 100vh;
+    width: 100%;
+    height: 100%;
+    overflow-x: hidden;
+    overflow-y: auto;
 }
 
 .modal-content {
@@ -919,32 +917,57 @@ button,
 /* Mobile */
 @media (max-width: 767px) {
     :root {
-        --topbar-height: auto;
+        --topbar-height: 3.25rem;
         --topbar-v-offset: 8px;
     }
 
     .app-shell {
-        padding-top: calc(96px + var(--topbar-v-offset));
+        padding-top: calc(var(--topbar-height) + var(--topbar-v-offset) * 2 + 0.35rem);
         padding-bottom: calc(5.5rem + env(safe-area-inset-bottom, 0px));
     }
 
     .dc-topbar {
         width: calc(100% - 16px);
-        height: auto;
-        border-radius: 20px;
-        padding: .65rem .85rem;
+        height: var(--topbar-height);
+        border-radius: 14px;
+        padding: 0 .5rem 0 .65rem;
     }
 
     .dc-topbar-inner {
-        gap: .55rem;
+        flex-wrap: wrap;
+        gap: .35rem;
+        align-items: center;
     }
 
-    .dc-topbar-head {
-        display: flex;
-        align-items: center;
-        justify-content: space-between;
-        width: 100%;
+    .dc-brand {
+        flex-shrink: 0;
         order: 1;
+    }
+
+    .dc-month-nav {
+        order: 2;
+        flex: 1;
+        min-width: 0;
+        margin: 0;
+        justify-content: center;
+        gap: .15rem;
+    }
+
+    .dc-menu-toggle {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        order: 3;
+        flex-shrink: 0;
+        width: 2.5rem;
+        height: 2.5rem;
+        border: none;
+        border-radius: 10px;
+        background: rgba(233,216,166,.15);
+        color: var(--creme-suave);
+        font-size: 1.2rem;
+        cursor: pointer;
+        margin-left: .15rem;
     }
 
     .dc-nav-drawer {
@@ -952,8 +975,10 @@ button,
         flex-direction: column;
         gap: .85rem;
         width: 100%;
-        order: 3;
+        flex-basis: 100%;
+        order: 4;
         padding-top: .65rem;
+        margin-top: .5rem;
         border-top: 1px solid rgba(233,216,166,.15);
     }
 
@@ -961,19 +986,10 @@ button,
         display: flex;
     }
 
-    .dc-menu-toggle {
-        display: inline-flex;
-        align-items: center;
-        justify-content: center;
-        width: 44px;
-        height: 44px;
-        border: none;
-        border-radius: 12px;
-        background: rgba(233,216,166,.15);
-        color: var(--creme-suave);
-        font-size: 1.35rem;
-        cursor: pointer;
-        flex-shrink: 0;
+    .dc-topbar:has(.dc-nav-drawer.is-open) {
+        height: auto;
+        min-height: var(--topbar-height);
+        padding-bottom: .65rem;
     }
 
     .dc-menu-toggle:hover,
@@ -1100,41 +1116,34 @@ button,
     }
 
     .dc-brand-logo {
-        height: 28px;
-    }
-
-    .dc-month-nav {
-        order: 2;
-        width: 100%;
-        margin: 0;
-        justify-content: center;
-        gap: .25rem;
+        height: 1.5rem;
     }
 
     .dc-month-label {
-        font-size: .95rem;
+        font-size: .82rem;
         min-width: auto;
+        white-space: nowrap;
     }
 
     .dc-month-labels {
-        flex-direction: column;
-        align-items: center;
-        gap: 0;
+        flex-direction: row;
+        align-items: baseline;
+        gap: .3rem;
     }
 
     .dc-year-label {
-        display: block;
+        display: inline;
         font-size: .72rem;
-        text-align: center;
     }
 
     .dc-arrow {
-        min-width: 44px;
-        min-height: 44px;
+        min-width: 2rem;
+        min-height: 2rem;
+        padding: 0;
         display: inline-flex;
         align-items: center;
         justify-content: center;
-        font-size: 1.1rem;
+        font-size: .95rem;
     }
 
     .calendar-container {
@@ -1309,25 +1318,54 @@ button,
         right: .75rem;
     }
 
+    /* Modais: abaixo da navbar, acima dos FABs, roláveis — sem “bottom sheet” cortado */
+    .modal.show {
+        display: flex !important;
+        align-items: flex-start !important;
+        justify-content: center;
+        padding: calc(var(--topbar-height) + var(--topbar-v-offset) * 2 + env(safe-area-inset-top, 0px))
+            0.5rem
+            calc(5.25rem + env(safe-area-inset-bottom, 0px));
+    }
+
     .modal-dialog {
-        margin: .5rem;
-        max-width: calc(100% - 1rem);
+        margin: 0 auto;
+        width: 100%;
+        max-width: 100%;
+        max-height: none;
     }
 
     .modal-dialog-centered {
-        align-items: flex-end;
-        min-height: calc(100% - 1rem);
+        display: flex;
+        align-items: stretch;
+        min-height: 0;
+        height: auto;
+    }
+
+    .modal-dialog.modal-lg,
+    .modal-dialog.modal-xl {
+        max-width: 100%;
     }
 
     .modal-content {
-        border-radius: 16px 16px 0 0;
-        max-height: 92dvh;
+        border-radius: 14px;
+        max-height: calc(
+            100dvh - var(--topbar-height) - var(--topbar-v-offset) * 2
+            - 5.5rem - env(safe-area-inset-top, 0px) - env(safe-area-inset-bottom, 0px)
+        );
         overflow: hidden;
         display: flex;
         flex-direction: column;
     }
 
+    .modal-header,
+    .modal-footer {
+        flex-shrink: 0;
+    }
+
     .modal-body {
+        flex: 1 1 auto;
+        min-height: 0;
         overflow-y: auto;
         -webkit-overflow-scrolling: touch;
         padding: 1rem 1.1rem;
