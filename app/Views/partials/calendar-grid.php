@@ -1,17 +1,15 @@
 <!-- Calendar Container -->
 <div class="calendar-container" id="calendarContainer">
-    <!-- Calendar Header (Day Names) -->
     <div class="calendar-header" id="calendarHeader">
-        <div>Dom</div>
-        <div>Seg</div>
-        <div>Ter</div>
-        <div>Qua</div>
-        <div>Qui</div>
-        <div>Sex</div>
-        <div>Sáb</div>
+        <div><span class="day-name-full">Dom</span><span class="day-name-short">D</span></div>
+        <div><span class="day-name-full">Seg</span><span class="day-name-short">S</span></div>
+        <div><span class="day-name-full">Ter</span><span class="day-name-short">T</span></div>
+        <div><span class="day-name-full">Qua</span><span class="day-name-short">Q</span></div>
+        <div><span class="day-name-full">Qui</span><span class="day-name-short">Q</span></div>
+        <div><span class="day-name-full">Sex</span><span class="day-name-short">S</span></div>
+        <div><span class="day-name-full">Sáb</span><span class="day-name-short">S</span></div>
     </div>
 
-    <!-- Calendar Grid (dynamically rendered by JS) -->
     <div class="calendar-grid" id="calendarGrid">
         <!-- Populated by calendar.js -->
     </div>

@@ -22,7 +22,7 @@ final class Session
             'domain'   => '',
             'secure'   => $isProduction,
             'httponly'  => true,
-            'samesite'=> 'Strict',
+            'samesite'=> $isProduction ? 'Strict' : 'Lax',
         ]);
 
         session_start();
@@ -89,6 +89,7 @@ final class Session
             'role'          => $_SESSION['user_role'] ?? 'user',
             'grupo_id'      => $_SESSION['user_grupo_id'] ?? null,
             'grupo_nome'    => $_SESSION['user_grupo_nome'] ?? null,
+            'presenca_uuid' => $_SESSION['user_presenca_uuid'] ?? null,
         ];
     }
 
@@ -101,5 +102,6 @@ final class Session
         $_SESSION['user_role']           = $user['role'] ?? 'user';
         $_SESSION['user_grupo_id']       = $user['grupo_id'] ?? null;
         $_SESSION['user_grupo_nome']     = $user['grupo_nome'] ?? null;
+        $_SESSION['user_presenca_uuid']  = $user['presenca_uuid'] ?? null;
     }
 }

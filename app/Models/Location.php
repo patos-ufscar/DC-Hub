@@ -53,4 +53,21 @@ class Location
 
         return $stmt->execute();
     }
+
+    public function countActivities(int $id): int
+    {
+        $stmt = $this->db->prepare('SELECT COUNT(*) FROM atividades WHERE local_id = :id');
+        $stmt->bindValue(':id', $id, PDO::PARAM_INT);
+        $stmt->execute();
+
+        return (int) $stmt->fetchColumn();
+    }
+
+    public function delete(int $id): bool
+    {
+        $stmt = $this->db->prepare('DELETE FROM locais WHERE id = :id');
+        $stmt->bindValue(':id', $id, PDO::PARAM_INT);
+
+        return $stmt->execute();
+    }
 }

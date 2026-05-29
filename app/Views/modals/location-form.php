@@ -15,8 +15,8 @@
                     </div>
                 </form>
 
-                <!-- Locations List -->
-                <div id="locationsList">
+                <!-- Locations List (admin only) -->
+                <div id="locationsList" class="admin-only d-none">
                     <!-- Dynamically populated -->
                 </div>
             </div>

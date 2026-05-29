@@ -30,6 +30,7 @@ CREATE TABLE IF NOT EXISTS usuarios (
     senha           VARCHAR(255) NOT NULL,
     nome_exibicao   VARCHAR(100) NOT NULL,
     nome_completo   VARCHAR(255) DEFAULT NULL,
+    presenca_uuid   CHAR(36) DEFAULT NULL UNIQUE,
     role            ENUM('user','proj','adm') NOT NULL DEFAULT 'user',
     grupo_id        INT UNSIGNED DEFAULT NULL,
     created_at      TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
@@ -42,17 +43,19 @@ CREATE TABLE IF NOT EXISTS usuarios (
 -- 3. Solicitações de Role (auto-registro com aprovação)
 -- ============================================================
 CREATE TABLE IF NOT EXISTS solicitacoes_role (
-    id          INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
-    user_id     INT UNSIGNED NOT NULL,
-    grupo_id    INT UNSIGNED NOT NULL,
-    status      ENUM('pendente','aprovado','rejeitado') NOT NULL DEFAULT 'pendente',
-    created_at  TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    id                  INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+    user_id             INT UNSIGNED NOT NULL,
+    grupo_id            INT UNSIGNED DEFAULT NULL,
+    grupo_nome_proposto VARCHAR(100) DEFAULT NULL,
+    mensagem            TEXT DEFAULT NULL,
+    status              ENUM('pendente','aprovado','rejeitado') NOT NULL DEFAULT 'pendente',
+    created_at          TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
     CONSTRAINT fk_solicitacoes_user
         FOREIGN KEY (user_id) REFERENCES usuarios(id)
         ON DELETE CASCADE ON UPDATE CASCADE,
     CONSTRAINT fk_solicitacoes_grupo
         FOREIGN KEY (grupo_id) REFERENCES grupos(id)
-        ON DELETE CASCADE ON UPDATE CASCADE
+        ON DELETE SET NULL ON UPDATE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- ============================================================
@@ -83,17 +86,24 @@ CREATE TABLE IF NOT EXISTS eventos (
 -- ============================================================
 CREATE TABLE IF NOT EXISTS atividades (
     id                      INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
-    evento_id               INT UNSIGNED NOT NULL,
+    evento_id               INT UNSIGNED DEFAULT NULL,
+    grupo_id                INT UNSIGNED NOT NULL,
     titulo                  VARCHAR(200) NOT NULL,
+    descricao               TEXT DEFAULT NULL,
     data                    DATE NOT NULL,
     hora_inicio             TIME NOT NULL,
     hora_fim                TIME NOT NULL,
     local_id                INT UNSIGNED NOT NULL,
-    descricao_certificado   TEXT NOT NULL,
+    oferece_certificado     TINYINT(1) NOT NULL DEFAULT 1,
+    descricao_certificado   TEXT DEFAULT NULL,
+    vagas_limite            INT UNSIGNED DEFAULT NULL,
     codigo_resgate          VARCHAR(20) DEFAULT NULL,
     created_at              TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
     CONSTRAINT fk_atividades_evento
         FOREIGN KEY (evento_id) REFERENCES eventos(id)
+        ON DELETE SET NULL ON UPDATE CASCADE,
+    CONSTRAINT fk_atividades_grupo
+        FOREIGN KEY (grupo_id) REFERENCES grupos(id)
         ON DELETE CASCADE ON UPDATE CASCADE,
     CONSTRAINT fk_atividades_local
         FOREIGN KEY (local_id) REFERENCES locais(id)
@@ -109,6 +119,9 @@ CREATE TABLE IF NOT EXISTS inscricoes (
     user_id         INT UNSIGNED NOT NULL,
     atividade_id    INT UNSIGNED NOT NULL,
     status          ENUM('rsvp','presente','ausente') NOT NULL DEFAULT 'rsvp',
+    validado_em     TIMESTAMP NULL DEFAULT NULL,
+    validado_por    INT UNSIGNED DEFAULT NULL,
+    metodo_validacao ENUM('manual','qr','codigo') DEFAULT NULL,
     created_at      TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
     UNIQUE KEY uq_inscricao (user_id, atividade_id),
     CONSTRAINT fk_inscricoes_user
@@ -116,7 +129,10 @@ CREATE TABLE IF NOT EXISTS inscricoes (
         ON DELETE CASCADE ON UPDATE CASCADE,
     CONSTRAINT fk_inscricoes_atividade
         FOREIGN KEY (atividade_id) REFERENCES atividades(id)
-        ON DELETE CASCADE ON UPDATE CASCADE
+        ON DELETE CASCADE ON UPDATE CASCADE,
+    CONSTRAINT fk_inscricoes_validador
+        FOREIGN KEY (validado_por) REFERENCES usuarios(id)
+        ON DELETE SET NULL ON UPDATE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 SET FOREIGN_KEY_CHECKS = 1;

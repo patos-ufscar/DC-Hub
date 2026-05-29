@@ -39,35 +39,50 @@ const Certificate = (() => {
             return;
         }
 
-        list.innerHTML = certs.map(c => `
+        list.innerHTML = certs.map(c => {
+            const isStandalone = c.tipo === 'atividade';
+            const subtitle = isStandalone
+                ? '<span class="badge bg-secondary ms-1">Atividade avulsa</span>'
+                : `<i class="bi bi-collection me-1"></i>${c.total_atividades} atividade(s) com presença`;
+            return `
             <div class="card mb-3">
                 <div class="card-body">
                     <div class="d-flex justify-content-between align-items-center">
                         <div>
                             <h6 class="mb-1">${App.escapeHtml(c.evento_titulo)}</h6>
                             <div class="small text-muted">
-                                <i class="bi bi-collection me-1"></i>${c.total_atividades} atividade(s) com presença
+                                ${subtitle}
                                 <i class="bi bi-clock ms-2 me-1"></i>${formatHours(c.total_minutos)} de carga horária
                             </div>
                             ${c.grupo_nome ? `<div class="small text-muted"><i class="bi bi-people me-1"></i>${App.escapeHtml(c.grupo_nome)}</div>` : ''}
                         </div>
-                        <button class="btn btn-dc-primary btnGenerateCert" data-evento-id="${c.evento_id}" ${!user.nome_completo ? 'disabled title="Preencha seu nome completo no perfil"' : ''}>
+                        <button class="btn btn-dc-primary btnGenerateCert"
+                                data-evento-id="${c.evento_id || ''}"
+                                data-atividade-id="${c.atividade_id || ''}"
+                                ${!user.nome_completo ? 'disabled title="Preencha seu nome completo no perfil"' : ''}>
                             <i class="bi bi-download me-1"></i>Gerar
                         </button>
                     </div>
                 </div>
-            </div>
-        `).join('');
+            </div>`;
+        }).join('');
 
         list.querySelectorAll('.btnGenerateCert').forEach(btn => {
-            btn.addEventListener('click', () => generateCertificate(btn.dataset.eventoId));
+            btn.addEventListener('click', () => {
+                generateCertificate(btn.dataset.eventoId, btn.dataset.atividadeId);
+            });
         });
     }
 
-    async function generateCertificate(eventoId) {
+    async function generateCertificate(eventoId, atividadeId) {
         const base = App.cfg.baseUrl || '.';
-        // Open in new tab for PDF download
-        window.open(`${base}/?action=certificate.generate&evento_id=${eventoId}`, '_blank');
+        let url = `${base}/?action=certificate.generate`;
+        if (atividadeId) {
+            url += `&atividade_id=${atividadeId}`;
+        } else {
+            url += `&evento_id=${eventoId}`;
+        }
+        window.open(url, '_blank');
     }
 
     function formatHours(minutes) {

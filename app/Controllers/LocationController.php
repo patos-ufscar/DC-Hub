@@ -26,8 +26,8 @@ class LocationController
 
     public function listAll(): void
     {
-        if (!Session::isLoggedIn() || !in_array(Session::get('user_role'), ['proj', 'adm'], true)) {
-            Response::error('Sem permissão.', 403);
+        if (!Session::isLoggedIn() || Session::get('user_role') !== 'adm') {
+            Response::error('Acesso restrito a administradores.', 403);
         }
 
         $locations = $this->locationModel->listAll();
@@ -60,8 +60,8 @@ class LocationController
         if (!Session::isLoggedIn()) {
             Response::error('Não autenticado.', 401);
         }
-        if (!in_array(Session::get('user_role'), ['proj', 'adm'], true)) {
-            Response::error('Sem permissão.', 403);
+        if (Session::get('user_role') !== 'adm') {
+            Response::error('Apenas administradores podem alterar locais.', 403);
         }
         if (!Csrf::validateRequest()) {
             Response::error('Token CSRF inválido.', 403);

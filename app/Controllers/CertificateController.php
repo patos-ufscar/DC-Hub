@@ -34,6 +34,7 @@ class CertificateController
             'success'        => true,
             'nome_completo'  => $nomeCompleto,
             'eligible'       => $eligible,
+            'certificates'   => $eligible,
         ]);
     }
 
@@ -50,19 +51,31 @@ class CertificateController
             Response::error('Preencha seu nome completo antes de emitir certificados.', 422);
         }
 
-        $eventoId = (int) ($_GET['evento_id'] ?? 0);
-        if ($eventoId <= 0) {
-            Response::error('ID de evento inválido.');
-        }
+        $atividadeId = (int) ($_GET['atividade_id'] ?? 0);
+        $eventoId    = (int) ($_GET['evento_id'] ?? 0);
 
-        $event = $this->eventModel->findById($eventoId);
-        if (!$event) {
-            Response::error('Evento não encontrado.', 404);
-        }
-
-        $activities = $this->regModel->getCertificateActivities($userId, $eventoId);
-        if (empty($activities)) {
-            Response::error('Nenhuma atividade com presença confirmada neste evento.');
+        if ($atividadeId > 0) {
+            $activities = $this->regModel->getCertificateStandaloneActivity($userId, $atividadeId);
+            if ($activities === null) {
+                Response::error('Nenhuma atividade avulsa elegível para certificado.');
+            }
+            $event = [
+                'titulo'    => $activities[0]['titulo'],
+                'grupo_nome'=> '',
+            ];
+            $filenameSlug = $activities[0]['titulo'];
+        } elseif ($eventoId > 0) {
+            $event = $this->eventModel->findById($eventoId);
+            if (!$event) {
+                Response::error('Evento não encontrado.', 404);
+            }
+            $activities = $this->regModel->getCertificateActivities($userId, $eventoId);
+            if (empty($activities)) {
+                Response::error('Nenhuma atividade com presença confirmada neste evento.');
+            }
+            $filenameSlug = $event['titulo'];
+        } else {
+            Response::error('Informe evento ou atividade.');
         }
 
         $totalMinutos = array_sum(array_column($activities, 'carga_minutos'));
@@ -91,7 +104,7 @@ class CertificateController
             $dompdf->setPaper('A4', 'landscape');
             $dompdf->render();
 
-            $filename = 'certificado_' . preg_replace('/[^a-z0-9]/', '_', strtolower($event['titulo'])) . '.pdf';
+            $filename = 'certificado_' . preg_replace('/[^a-z0-9]/', '_', strtolower($filenameSlug)) . '.pdf';
 
             header('Content-Type: application/pdf');
             header('Content-Disposition: attachment; filename="' . $filename . '"');

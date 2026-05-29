@@ -8,6 +8,7 @@ use App\Core\Response;
 use App\Core\Session;
 use App\Models\Registration;
 use App\Models\Activity;
+use App\Models\User;
 use PDO;
 
 class RegistrationController
@@ -37,6 +38,10 @@ class RegistrationController
 
         $userId = (int) Session::get('user_id');
         $status = $this->regModel->toggleRsvp($userId, $atividadeId);
+
+        if ($status === 'full') {
+            Response::error('Vagas esgotadas para esta atividade.');
+        }
 
         Response::success('RSVP atualizado.', ['status' => $status]);
     }
@@ -115,9 +120,112 @@ class RegistrationController
         // Validate that the user IDs are integers
         $userIds = array_map('intval', (array) $userIds);
 
-        $count = $this->regModel->bulkConfirmPresence($atividadeId, $userIds);
+        $count = $this->regModel->bulkConfirmPresence(
+            $atividadeId,
+            $userIds,
+            (int) Session::get('user_id')
+        );
 
-        Response::success("Presença confirmada para {$count} participante(s).");
+        Response::success("Presença confirmada para {$count} participante(s).", ['confirmed' => $count]);
+    }
+
+    public function checkinList(): void
+    {
+        if (!Session::isLoggedIn()) {
+            Response::error('Não autenticado.', 401);
+        }
+
+        $role = Session::get('user_role');
+        if (!in_array($role, ['proj', 'adm'], true)) {
+            Response::error('Sem permissão.', 403);
+        }
+
+        $atividadeId = (int) ($_GET['atividade_id'] ?? 0);
+        if ($atividadeId <= 0) {
+            Response::error('ID inválido.');
+        }
+
+        $this->assertActivityAccess($atividadeId, $role);
+
+        $users = $this->regModel->getCheckinList($atividadeId);
+
+        Response::json(['success' => true, 'users' => $users]);
+    }
+
+    public function scanPresence(): void
+    {
+        if (!Session::isLoggedIn()) {
+            Response::error('Não autenticado.', 401);
+        }
+
+        $role = Session::get('user_role');
+        if (!in_array($role, ['proj', 'adm'], true)) {
+            Response::error('Sem permissão.', 403);
+        }
+
+        if (!Csrf::validateRequest()) {
+            Response::error('Token CSRF inválido.', 403);
+        }
+
+        $atividadeId = (int) ($_POST['atividade_id'] ?? 0);
+        $uuid        = trim($_POST['presenca_uuid'] ?? '');
+
+        if ($atividadeId <= 0 || $uuid === '') {
+            Response::error('Dados inválidos.');
+        }
+
+        $this->assertActivityAccess($atividadeId, $role);
+
+        $userModel = new User($this->db);
+        $user = $userModel->findByPresencaUuid($uuid);
+        if (!$user) {
+            Response::error('QR Code não reconhecido.');
+        }
+
+        $result = $this->regModel->markPresent(
+            (int) $user['id'],
+            $atividadeId,
+            (int) Session::get('user_id'),
+            'qr'
+        );
+
+        $message = $result['already']
+            ? "{$result['nome_exibicao']} já tinha presença confirmada."
+            : "Presença confirmada: {$result['nome_exibicao']}.";
+
+        Response::success($message, [
+            'user_id'       => $result['user_id'],
+            'nome_exibicao' => $result['nome_exibicao'],
+            'already'       => $result['already'],
+        ]);
+    }
+
+    public function myQr(): void
+    {
+        if (!Session::isLoggedIn()) {
+            Response::error('Não autenticado.', 401);
+        }
+
+        $userModel = new User($this->db);
+        $uuid = $userModel->ensurePresencaUuid((int) Session::get('user_id'));
+
+        Response::json([
+            'success'       => true,
+            'presenca_uuid'  => $uuid,
+            'nome_exibicao' => Session::get('user_nome_exibicao'),
+        ]);
+    }
+
+    private function assertActivityAccess(int $atividadeId, string $role): void
+    {
+        if ($role !== 'proj') {
+            return;
+        }
+
+        $activity = $this->activityModel->findById($atividadeId);
+        if (!$activity || (int) $activity['grupo_id'] !== (int) Session::get('user_grupo_id')) {
+            Response::error('Sem permissão para esta atividade.', 403);
+        }
     }
 
     public function generateCode(): void

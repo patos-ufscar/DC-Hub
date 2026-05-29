@@ -9,9 +9,15 @@ final class Response
     {
         http_response_code($status);
         header('Content-Type: application/json; charset=utf-8');
+
+        if (session_status() === PHP_SESSION_ACTIVE) {
+            $data['csrf_token'] = Csrf::generateToken();
+        }
+
         if (!isset($data['ok'])) {
             $data['ok'] = $status < 400;
         }
+
         echo json_encode($data, JSON_UNESCAPED_UNICODE);
         exit;
     }

@@ -31,7 +31,24 @@ final class Csrf
 
     public static function validateRequest(): bool
     {
-        $token = $_POST['csrf_token'] ?? $_SERVER['HTTP_X_CSRF_TOKEN'] ?? null;
-        return self::validateToken($token);
+        $token = $_POST['csrf_token'] ?? null;
+
+        if ($token === null) {
+            $token = $_SERVER['HTTP_X_CSRF_TOKEN'] ?? null;
+        }
+
+        if ($token === null && function_exists('getallheaders')) {
+            $headers = getallheaders();
+            if (is_array($headers)) {
+                foreach ($headers as $name => $value) {
+                    if (strtolower((string) $name) === 'x-csrf-token') {
+                        $token = $value;
+                        break;
+                    }
+                }
+            }
+        }
+
+        return self::validateToken(is_string($token) ? $token : null);
     }
 }

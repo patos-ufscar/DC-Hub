@@ -8,7 +8,19 @@ const Events = (() => {
 
     /* ─── Show Event Detail ──────────────────────────────── */
     async function showEventDetail(eventoId) {
-        const res = await App.get(`event.detail&id=${eventoId}`);
+        const id = Number(eventoId);
+        if (!id || id <= 0) {
+            App.toast('Evento não encontrado.', 'danger');
+            return;
+        }
+        let res;
+        try {
+            res = await App.get(`event.detail&id=${id}`);
+        } catch (err) {
+            console.error('showEventDetail:', err);
+            App.toast('Erro ao abrir o evento.', 'danger');
+            return;
+        }
         if (!res.ok) { App.toast(res.error || 'Erro', 'danger'); return; }
 
         const ev = res.event;
@@ -23,14 +35,28 @@ const Events = (() => {
                 list.innerHTML = '<p class="text-muted">Nenhuma atividade cadastrada.</p>';
             } else {
                 list.innerHTML = ev.atividades.map(a => {
-                    const rsvpBtnHtml = App.isLoggedIn()
-                        ? `<button class="btn btn-sm ${a.usuario_inscrito ? 'btn-dc-danger' : 'btn-dc-primary'} btnRsvp" data-id="${a.id}">${a.usuario_inscrito ? '<i class="bi bi-x-circle me-1"></i>Cancelar' : '<i class="bi bi-check-circle me-1"></i>RSVP'}</button>`
+                    const inscrito = !!a.usuario_inscrito;
+                    const vagasEsgotadas = a.vagas_limite !== null && a.vagas_disponiveis !== null && a.vagas_disponiveis <= 0 && !inscrito;
+                    const vagasInfo = a.vagas_limite !== null
+                        ? `<span class="badge bg-light text-dark ms-1">${a.vagas_ocupadas || 0}/${a.vagas_limite} vagas</span>`
                         : '';
-                    const manageBtns = App.canManage()
+                    const certBadge = Number(a.oferece_certificado)
+                        ? '<span class="badge bg-info text-dark ms-1">Certificado</span>'
+                        : '';
+                    const descHtml = a.descricao
+                        ? `<div class="small mt-1">${App.escapeHtml(a.descricao)}</div>`
+                        : '';
+                    const rsvpBtnHtml = App.isLoggedIn()
+                        ? (vagasEsgotadas
+                            ? '<span class="badge bg-secondary">Vagas esgotadas</span>'
+                            : `<button class="btn btn-sm ${inscrito ? 'btn-dc-danger' : 'btn-dc-primary'} btnRsvp" data-id="${a.id}">${inscrito ? '<i class="bi bi-x-circle me-1"></i>Cancelar' : '<i class="bi bi-check-circle me-1"></i>RSVP'}</button>`)
+                        : '';
+                    const manageBtns = App.canManageGrupo(a.grupo_id)
                         ? `<button class="btn btn-sm btn-dc-warning btnEditActivity" data-id="${a.id}"><i class="bi bi-pencil"></i></button>
                            <button class="btn btn-sm btn-dc-secondary btnCheckin" data-id="${a.id}" data-title="${App.escapeHtml(a.titulo)}"><i class="bi bi-clipboard-check"></i></button>
                            <button class="btn btn-sm btn-dc-danger btnDeleteActivity" data-id="${a.id}"><i class="bi bi-trash"></i></button>`
                         : '';
+                    const shareBtn = `<button type="button" class="btn btn-sm btn-outline-secondary btnCopyActivityLink" data-id="${a.id}" title="Copiar link"><i class="bi bi-link-45deg"></i></button>`;
                     const exportBtns = `<div class="dropdown d-inline">
                         <button class="btn btn-sm btn-outline-secondary dropdown-toggle" data-bs-toggle="dropdown"><i class="bi bi-calendar-plus"></i></button>
                         <ul class="dropdown-menu">
@@ -47,10 +73,12 @@ const Events = (() => {
                                         <i class="bi bi-calendar3 me-1"></i>${App.formatDate(a.data)}
                                         <i class="bi bi-clock ms-2 me-1"></i>${App.formatTime(a.hora_inicio)} - ${App.formatTime(a.hora_fim)}
                                         <i class="bi bi-geo-alt ms-2 me-1"></i>${App.escapeHtml(a.local_nome || '')}
+                                        ${vagasInfo}${certBadge}
                                     </div>
+                                    ${descHtml}
                                 </div>
                                 <div class="d-flex gap-1 align-items-center">
-                                    ${rsvpBtnHtml} ${exportBtns} ${manageBtns}
+                                    ${rsvpBtnHtml} ${shareBtn} ${exportBtns} ${manageBtns}
                                 </div>
                             </div>
                         </div>
@@ -61,7 +89,7 @@ const Events = (() => {
 
         // Management buttons visibility
         const mgmt = document.getElementById('detailManageButtons');
-        if (mgmt) mgmt.classList.toggle('d-none', !App.canManage());
+        if (mgmt) mgmt.classList.toggle('d-none', !App.canManageGrupo(ev.grupo_id));
 
         // Store event ID
         document.getElementById('eventDetailModal').dataset.eventoId = eventoId;
@@ -69,6 +97,31 @@ const Events = (() => {
     }
 
     /* ─── Event CRUD ─────────────────────────────────────── */
+    function toggleEventGrupoFields() {
+        const isProjUser = App.isProj();
+        const adminWrap = document.getElementById('eventGrupoAdminFields');
+        const projInfo = document.getElementById('eventGrupoProjInfo');
+        const adminSel = document.getElementById('eventGrupoId');
+        const hiddenGrupo = document.getElementById('eventGrupoIdHidden');
+
+        if (adminWrap) adminWrap.classList.toggle('d-none', isProjUser);
+        if (projInfo) projInfo.classList.toggle('d-none', !isProjUser);
+        if (adminSel) {
+            adminSel.required = !isProjUser;
+            if (isProjUser) adminSel.removeAttribute('name');
+            else adminSel.setAttribute('name', 'grupo_id');
+        }
+        if (hiddenGrupo) {
+            hiddenGrupo.disabled = !isProjUser;
+            if (isProjUser && App.cfg.user?.grupo_id) {
+                hiddenGrupo.value = App.cfg.user.grupo_id;
+            }
+        }
+        if (isProjUser) {
+            App.setText('eventGrupoProjNome', App.cfg.user?.grupo_nome || '—');
+        }
+    }
+
     async function openEventForm(eventId = null) {
         const title = document.getElementById('eventFormTitle');
         const form = document.getElementById('eventForm');
@@ -76,8 +129,11 @@ const Events = (() => {
         document.getElementById('eventFormId').value = '';
         App.hideFormError('eventFormError');
 
-        // Load groups
-        await loadGroupsSelect('eventGrupoId');
+        toggleEventGrupoFields();
+
+        if (App.isAdmin()) {
+            await loadGroupsSelect('eventGrupoId');
+        }
 
         if (eventId) {
             title.innerHTML = '<i class="bi bi-pencil me-2"></i>Editar Evento';
@@ -85,49 +141,224 @@ const Events = (() => {
             if (res.ok) {
                 document.getElementById('eventFormId').value = res.event.id;
                 document.getElementById('eventTitulo').value = res.event.titulo;
-                document.getElementById('eventGrupoId').value = res.event.grupo_id;
                 document.getElementById('eventDescricao').value = res.event.descricao || '';
+                if (App.isProj()) {
+                    document.getElementById('eventGrupoIdHidden').value = res.event.grupo_id;
+                } else {
+                    document.getElementById('eventGrupoId').value = res.event.grupo_id;
+                }
             }
         } else {
             title.innerHTML = '<i class="bi bi-calendar-event me-2"></i>Novo Evento';
+            if (App.isProj() && App.cfg.user?.grupo_id) {
+                document.getElementById('eventGrupoIdHidden').value = App.cfg.user.grupo_id;
+            }
         }
 
         App.openModal('eventFormModal');
     }
 
-    async function openActivityForm(activityId = null, eventoId = null) {
+    function toggleActivityCertFields() {
+        const checked = document.getElementById('activityOfereceCert')?.checked;
+        const wrap = document.getElementById('activityCertFields');
+        const desc = document.getElementById('activityDescCert');
+        if (wrap) wrap.classList.toggle('d-none', !checked);
+        if (desc) desc.required = !!checked;
+    }
+
+    function toggleActivityEventFields() {
+        const associada = document.getElementById('activityAssociadaEvento')?.checked;
+        const eventWrap = document.getElementById('activityEventFields');
+        const grupoWrap = document.getElementById('activityGrupoFields');
+        const projGrupoInfo = document.getElementById('activityGrupoProjInfo');
+        const eventSel = document.getElementById('activityEventoId');
+        const grupoSel = document.getElementById('activityGrupoId');
+        const isAdm = App.isAdmin();
+        const isProjUser = App.isProj();
+
+        if (eventWrap) eventWrap.classList.toggle('d-none', !associada);
+        if (eventSel) eventSel.required = !!associada;
+
+        const showAdminGrupo = !associada && isAdm;
+        if (grupoWrap) grupoWrap.classList.toggle('d-none', !showAdminGrupo);
+        if (grupoSel) {
+            grupoSel.required = showAdminGrupo;
+            if (showAdminGrupo) grupoSel.setAttribute('name', 'grupo_id');
+            else grupoSel.removeAttribute('name');
+        }
+
+        const showProjGrupo = !associada && isProjUser;
+        if (projGrupoInfo) projGrupoInfo.classList.toggle('d-none', !showProjGrupo);
+        if (showProjGrupo) {
+            App.setText('activityGrupoProjNome', App.cfg.user?.grupo_nome || '—');
+        }
+    }
+
+    async function openActivityForm(activityId = null, eventoId = null, prefillDate = null) {
         const title = document.getElementById('activityFormTitle');
         const form = document.getElementById('activityForm');
         form.reset();
         document.getElementById('activityFormId').value = '';
         App.hideFormError('activityFormError');
+        document.getElementById('activityOfereceCert').checked = true;
+        toggleActivityCertFields();
 
-        // Load events & locations
         await Promise.all([
             loadEventsSelect('activityEventoId'),
-            loadLocationsSelect('activityLocalId')
+            loadLocationsSelect('activityLocalId'),
+            App.isAdmin() ? loadGroupsSelect('activityGrupoId') : Promise.resolve()
         ]);
+
+        const associadaCb = document.getElementById('activityAssociadaEvento');
 
         if (activityId) {
             title.innerHTML = '<i class="bi bi-pencil me-2"></i>Editar Atividade';
             const res = await App.get(`activity.detail&id=${activityId}`);
             if (res.ok) {
                 const a = res.activity;
+                const hasEvent = a.evento_id && Number(a.evento_id) > 0;
                 document.getElementById('activityFormId').value = a.id;
-                document.getElementById('activityEventoId').value = a.evento_id;
+                if (associadaCb) associadaCb.checked = hasEvent;
+                if (hasEvent) {
+                    document.getElementById('activityEventoId').value = a.evento_id;
+                } else if (App.isAdmin()) {
+                    document.getElementById('activityGrupoId').value = a.grupo_id;
+                }
                 document.getElementById('activityTitulo').value = a.titulo;
+                document.getElementById('activityDescricao').value = a.descricao || '';
                 document.getElementById('activityData').value = a.data;
                 document.getElementById('activityHoraInicio').value = a.hora_inicio;
                 document.getElementById('activityHoraFim').value = a.hora_fim;
                 document.getElementById('activityLocalId').value = a.local_id;
+                document.getElementById('activityVagasLimite').value = a.vagas_limite ?? '';
+                document.getElementById('activityOfereceCert').checked = Number(a.oferece_certificado) === 1;
                 document.getElementById('activityDescCert').value = a.descricao_certificado || '';
+                toggleActivityCertFields();
             }
         } else {
             title.innerHTML = '<i class="bi bi-calendar-plus me-2"></i>Nova Atividade';
+            if (associadaCb) associadaCb.checked = !!eventoId;
             if (eventoId) document.getElementById('activityEventoId').value = eventoId;
+            if (prefillDate) document.getElementById('activityData').value = prefillDate;
         }
 
+        toggleActivityEventFields();
         App.openModal('activityFormModal');
+    }
+
+    function rememberPendingActivity(id) {
+        try {
+            sessionStorage.setItem('dc_pending_atividade', String(id));
+        } catch { /* ignore */ }
+    }
+
+    function clearPendingActivity() {
+        try {
+            sessionStorage.removeItem('dc_pending_atividade');
+        } catch { /* ignore */ }
+    }
+
+    async function showActivityDetail(activityId) {
+        const id = Number(activityId);
+        if (!id || id <= 0) {
+            App.toast('Atividade não encontrada.', 'danger');
+            return;
+        }
+
+        try {
+            const res = await App.get(`activity.detail&id=${id}`);
+            if (!res.ok || !res.activity) {
+                App.toast(res.error || res.message || 'Atividade não encontrada.', 'danger');
+                return;
+            }
+
+            const a = res.activity;
+            const modal = document.getElementById('activityDetailModal');
+            if (!modal) {
+                App.toast('Erro na interface. Recarregue a página.', 'danger');
+                return;
+            }
+
+            modal.dataset.activityId = String(id);
+            rememberPendingActivity(id);
+            App.setText('activityDetailTitle', a.titulo || 'Atividade');
+            App.setText('activityDetailGroup', a.grupo_nome || '');
+            App.setText('activityDetailDesc', a.descricao || '');
+
+            const shareInput = document.getElementById('activityShareUrl');
+            if (shareInput) {
+                shareInput.value = App.activityUrl(a.id);
+            }
+
+            const vagasInfo = a.vagas_limite !== null && a.vagas_limite !== ''
+                ? `${a.vagas_ocupadas || 0}/${a.vagas_limite} vagas`
+                : 'Vagas ilimitadas';
+            const meta = document.getElementById('activityDetailMeta');
+            if (meta) {
+                meta.innerHTML = `
+                    <div><i class="bi bi-calendar3 me-1"></i>${App.formatDate(a.data)}</div>
+                    <div><i class="bi bi-clock me-1"></i>${App.formatTime(a.hora_inicio)} – ${App.formatTime(a.hora_fim)}</div>
+                    <div><i class="bi bi-geo-alt me-1"></i>${App.escapeHtml(a.local_nome || '')}</div>
+                    <div><i class="bi bi-people me-1"></i>${App.escapeHtml(vagasInfo)}</div>
+                    ${a.evento_titulo ? `<div><i class="bi bi-folder me-1"></i>${App.escapeHtml(a.evento_titulo)}</div>` : ''}
+                    ${Number(a.oferece_certificado) ? '<div><span class="badge bg-info text-dark">Certificado</span></div>' : ''}`;
+            }
+
+            const actions = document.getElementById('activityDetailActions');
+            const inscrito = !!res.user_inscrito;
+            const presente = res.user_status === 'presente';
+            const esgotado = a.vagas_limite !== null && a.vagas_limite !== ''
+                && res.vagas_disponiveis !== undefined
+                && res.vagas_disponiveis <= 0 && !inscrito;
+
+            if (actions) {
+                if (!App.isLoggedIn()) {
+                    actions.innerHTML = `
+                        <button type="button" class="btn btn-sm btn-dc-primary btnLoginForRsvp" data-activity-id="${a.id}">
+                            <i class="bi bi-box-arrow-in-right me-1"></i>Entrar para se inscrever
+                        </button>`;
+                } else if (presente) {
+                    actions.innerHTML = '<span class="badge bg-success"><i class="bi bi-check-circle me-1"></i>Presença confirmada</span>';
+                } else if (esgotado) {
+                    actions.innerHTML = '<span class="badge bg-secondary">Vagas esgotadas</span>';
+                } else {
+                    actions.innerHTML = `<button type="button" class="btn btn-sm ${inscrito ? 'btn-dc-danger' : 'btn-dc-primary'} btnRsvp" data-id="${a.id}">
+                        ${inscrito ? '<i class="bi bi-x-circle me-1"></i>Cancelar inscrição' : '<i class="bi bi-check-circle me-1"></i>Inscrever-se'}</button>`;
+                }
+            }
+
+            const manage = document.getElementById('activityDetailManage');
+            if (manage) {
+                if (App.canManageGrupo(a.grupo_id)) {
+                    manage.innerHTML = `
+                        <button type="button" class="btn btn-sm btn-dc-warning btnEditActivity" data-id="${a.id}"><i class="bi bi-pencil me-1"></i>Editar</button>
+                        <button type="button" class="btn btn-sm btn-outline-primary btnViewAttendees" data-id="${a.id}" data-title="${App.escapeHtml(a.titulo)}"><i class="bi bi-people me-1"></i>Inscritos</button>
+                        <button type="button" class="btn btn-sm btn-dc-secondary btnCheckin" data-id="${a.id}" data-title="${App.escapeHtml(a.titulo)}"><i class="bi bi-qr-code-scan me-1"></i>Check-in</button>
+                        <button type="button" class="btn btn-sm btn-dc-danger btnDeleteActivity" data-id="${a.id}"><i class="bi bi-trash me-1"></i>Excluir</button>`;
+                    manage.classList.remove('d-none');
+                } else {
+                    manage.innerHTML = '';
+                    manage.classList.add('d-none');
+                }
+            }
+
+            App.setActivityUrl(a.id);
+            App.openModal('activityDetailModal');
+        } catch (err) {
+            console.error('showActivityDetail:', err);
+            App.toast('Erro ao abrir a atividade.', 'danger');
+        }
+    }
+
+    let pendingDayDate = null;
+
+    function openCreateChoice(dateStr = null) {
+        pendingDayDate = dateStr;
+        const viewBtn = document.getElementById('btnViewDayFromChoice');
+        if (viewBtn) {
+            viewBtn.classList.toggle('d-none', !dateStr);
+        }
+        App.openModal('createChoiceModal');
     }
 
     /* ─── Select loaders ─────────────────────────────────── */
@@ -145,7 +376,11 @@ const Events = (() => {
     }
 
     async function loadEventsSelect(selectId) {
-        const res = await App.get('event.list');
+        let url = 'event.list';
+        if (App.isProj() && App.cfg.user?.grupo_id) {
+            url += `&grupo_id=${App.cfg.user.grupo_id}`;
+        }
+        const res = await App.get(url);
         const sel = document.getElementById(selectId);
         if (!sel || !res.ok) return;
         sel.innerHTML = '<option value="">Selecione o evento...</option>';
@@ -174,39 +409,30 @@ const Events = (() => {
     async function toggleRsvp(activityId) {
         const res = await App.api('registration.toggle', { body: { atividade_id: activityId } });
         if (res.ok) {
-            App.toast(res.status === 'inscrito' ? 'Inscrição confirmada!' : 'Inscrição cancelada.', res.status === 'inscrito' ? 'success' : 'info');
+            let msg = 'Inscrição cancelada.';
+            let type = 'info';
+            if (res.status === 'rsvp') {
+                msg = 'Inscrição confirmada!';
+                type = 'success';
+            } else if (res.status === 'presente') {
+                msg = 'Você já tem presença confirmada nesta atividade.';
+                type = 'warning';
+            }
+            App.toast(msg, type);
             const evId = document.getElementById('eventDetailModal')?.dataset?.eventoId;
+            const actId = document.getElementById('activityDetailModal')?.dataset?.activityId;
             if (evId) showEventDetail(evId);
+            else if (actId) showActivityDetail(actId);
         } else {
             App.toast(res.error || 'Erro', 'danger');
         }
     }
 
     /* ─── Check-in panel ─────────────────────────────────── */
-    async function openCheckinPanel(activityId, title) {
-        document.getElementById('checkinActivityId').value = activityId;
-        App.setText('checkinActivityTitle', title);
-        document.getElementById('generatedCode').classList.add('d-none');
-
-        const res = await App.get(`registration.attendees&atividade_id=${activityId}`);
-        const list = document.getElementById('attendeesList');
-        if (res.ok && list) {
-            if (res.attendees.length === 0) {
-                list.innerHTML = '<p class="text-muted">Nenhum inscrito.</p>';
-            } else {
-                list.innerHTML = res.attendees.map(a => `
-                    <div class="form-check mb-2">
-                        <input class="form-check-input" type="checkbox" name="user_ids[]" value="${a.usuario_id}" id="att_${a.usuario_id}" ${a.presenca_validada ? 'checked disabled' : ''}>
-                        <label class="form-check-label" for="att_${a.usuario_id}">
-                            ${App.escapeHtml(a.nome_exibicao || a.email)}
-                            ${a.presenca_validada ? '<span class="badge bg-success ms-2">Presente</span>' : ''}
-                        </label>
-                    </div>
-                `).join('');
-            }
+    function openCheckinPanel(activityId, title) {
+        if (window.Presence && typeof Presence.openCheckinPanel === 'function') {
+            Presence.openCheckinPanel(activityId, title);
         }
-
-        App.openModal('checkinPanelModal');
     }
 
     /* ─── Init event handlers ────────────────────────────── */
@@ -228,24 +454,62 @@ const Events = (() => {
         });
 
         /* Activity form submit */
+        document.getElementById('activityOfereceCert')?.addEventListener('change', toggleActivityCertFields);
+        document.getElementById('activityAssociadaEvento')?.addEventListener('change', toggleActivityEventFields);
+
         document.getElementById('activityForm')?.addEventListener('submit', async (e) => {
             e.preventDefault();
             App.hideFormError('activityFormError');
             const data = App.formData(e.target);
+            data.oferece_certificado = document.getElementById('activityOfereceCert')?.checked ? '1' : '0';
+            data.associada_evento = document.getElementById('activityAssociadaEvento')?.checked ? '1' : '0';
+            if (data.vagas_limite === '') delete data.vagas_limite;
+            if (data.associada_evento !== '1') {
+                delete data.evento_id;
+            } else {
+                delete data.grupo_id;
+            }
+            if (App.isProj()) delete data.grupo_id;
             const action = data.id ? 'activity.update' : 'activity.create';
             const res = await App.api(action, { body: data });
             if (res.ok) {
                 App.closeModal('activityFormModal');
                 App.toast(data.id ? 'Atividade atualizada!' : 'Atividade criada!', 'success');
                 Calendar.loadActivities();
+                if (window.ActivitiesManage) ActivitiesManage.refreshIfOpen();
+                const evId = document.getElementById('eventDetailModal')?.dataset?.eventoId;
+                const actId = document.getElementById('activityDetailModal')?.dataset?.activityId;
+                if (evId) showEventDetail(evId);
+                else if (actId && data.id) showActivityDetail(actId);
             } else {
                 App.showFormError('activityFormError', res.error || 'Erro.');
             }
         });
 
-        /* FAB button – shows choice between event/activity */
-        document.getElementById('fabAdd')?.addEventListener('click', () => {
-            openEventForm();
+        /* FAB – escolher evento ou atividade */
+        document.getElementById('btnAddEvent')?.addEventListener('click', () => {
+            openCreateChoice();
+        });
+
+        document.getElementById('btnCreateEvent')?.addEventListener('click', () => {
+            App.closeModal('createChoiceModal');
+            setTimeout(() => openEventForm(), 200);
+        });
+
+        document.getElementById('btnCreateActivity')?.addEventListener('click', () => {
+            App.closeModal('createChoiceModal');
+            setTimeout(() => openActivityForm(null, null, pendingDayDate), 200);
+            pendingDayDate = null;
+        });
+
+        document.getElementById('btnViewDayFromChoice')?.addEventListener('click', () => {
+            if (!pendingDayDate) return;
+            const date = pendingDayDate;
+            pendingDayDate = null;
+            App.closeModal('createChoiceModal');
+            if (window.Calendar) {
+                Calendar.openDayView(date);
+            }
         });
 
         /* Link new location from activity form */
@@ -272,7 +536,9 @@ const Events = (() => {
         });
 
         /* Location modal – load list on open */
-        document.getElementById('locationFormModal')?.addEventListener('show.bs.modal', loadLocationsList);
+        document.getElementById('locationFormModal')?.addEventListener('show.bs.modal', () => {
+            if (App.isAdmin()) loadLocationsList();
+        });
 
         /* Delegated event handlers in the detail modal */
         document.getElementById('detailActivitiesList')?.addEventListener('click', (e) => {
@@ -296,6 +562,9 @@ const Events = (() => {
             } else if (btn.classList.contains('btnExportIcs')) {
                 e.preventDefault();
                 exportIcs(id);
+            } else if (btn.classList.contains('btnCopyActivityLink')) {
+                e.preventDefault();
+                copyActivityLink(id);
             }
         });
 
@@ -325,23 +594,7 @@ const Events = (() => {
             }
         });
 
-        /* Check-in form */
-        document.getElementById('checkinForm')?.addEventListener('submit', async (e) => {
-            e.preventDefault();
-            const actId = document.getElementById('checkinActivityId').value;
-            const checkboxes = e.target.querySelectorAll('input[name="user_ids[]"]:checked:not(:disabled)');
-            const userIds = Array.from(checkboxes).map(cb => cb.value);
-            if (userIds.length === 0) { App.toast('Selecione ao menos um participante.', 'warning'); return; }
-            const res = await App.api('registration.validate', { body: { atividade_id: actId, user_ids: userIds } });
-            if (res.ok) {
-                App.toast(`${res.confirmed || userIds.length} presença(s) confirmada(s)!`, 'success');
-                openCheckinPanel(actId, document.getElementById('checkinActivityTitle').textContent);
-            } else {
-                App.toast(res.error || 'Erro', 'danger');
-            }
-        });
-
-        /* Generate code */
+        /* Generate code (check-in fallback) */
         document.getElementById('btnGenerateCode')?.addEventListener('click', async () => {
             const actId = document.getElementById('checkinActivityId').value;
             const res = await App.api('registration.generateCode', { body: { atividade_id: actId } });
@@ -373,6 +626,66 @@ const Events = (() => {
 
         /* RSVP dashboard – load on open */
         document.getElementById('rsvpDashboardModal')?.addEventListener('show.bs.modal', loadRsvpDashboard);
+
+        /* Standalone activity detail – delegated actions */
+        document.getElementById('activityDetailModal')?.addEventListener('click', (e) => {
+            const btn = e.target.closest('button');
+            if (!btn) return;
+            const id = btn.dataset.id;
+
+            if (btn.classList.contains('btnLoginForRsvp')) {
+                const actId = btn.dataset.activityId;
+                if (actId) rememberPendingActivity(actId);
+                App.closeModal('activityDetailModal');
+                setTimeout(() => App.openModal('loginModal'), 300);
+            } else if (btn.classList.contains('btnRsvp')) {
+                toggleRsvp(id);
+            } else if (btn.classList.contains('btnEditActivity')) {
+                App.closeModal('activityDetailModal');
+                setTimeout(() => openActivityForm(id), 300);
+            } else if (btn.classList.contains('btnDeleteActivity')) {
+                if (confirm('Excluir esta atividade?')) deleteActivity(id);
+            } else if (btn.classList.contains('btnCheckin')) {
+                App.closeModal('activityDetailModal');
+                setTimeout(() => openCheckinPanel(id, btn.dataset.title), 300);
+            } else if (btn.classList.contains('btnViewAttendees')) {
+                if (window.ActivitiesManage) {
+                    ActivitiesManage.openAttendees(id, btn.dataset.title);
+                }
+            }
+        });
+
+        document.getElementById('btnCopyActivityLink')?.addEventListener('click', async () => {
+            const input = document.getElementById('activityShareUrl');
+            if (!input?.value) return;
+            if (await App.copyToClipboard(input.value)) {
+                App.toast('Link copiado!', 'success');
+            }
+        });
+
+        document.getElementById('activityDetailModal')?.addEventListener('hidden.bs.modal', () => {
+            const loginOpen = document.getElementById('loginModal')?.classList.contains('show');
+            const registerOpen = document.getElementById('registerModal')?.classList.contains('show');
+            if (loginOpen || registerOpen) return;
+            clearPendingActivity();
+            if (window.location.search.includes('atividade=')) {
+                App.setActivityUrl(null);
+            }
+        });
+
+        handleDeepLink();
+    }
+
+    function handleDeepLink() {
+        let id = App.cfg.deepLink?.atividade;
+        if (!id) {
+            try {
+                id = sessionStorage.getItem('dc_pending_atividade');
+            } catch { /* ignore */ }
+        }
+        if (id) {
+            setTimeout(() => showActivityDetail(id), 400);
+        }
     }
 
     /* ─── RSVP Dashboard loading ─────────────────────────── */
@@ -401,10 +714,10 @@ const Events = (() => {
                                 <i class="bi bi-calendar3 me-1"></i>${App.formatDate(r.data)}
                                 <i class="bi bi-clock ms-2 me-1"></i>${App.formatTime(r.hora_inicio)} - ${App.formatTime(r.hora_fim)}
                             </div>
-                            <div class="small text-muted">${App.escapeHtml(r.evento_titulo || '')}</div>
+                            <div class="small text-muted">${App.escapeHtml(r.evento_titulo || r.grupo_nome || 'Atividade avulsa')}</div>
                         </div>
                         <div>
-                            ${r.presenca_validada
+                            ${r.status === 'presente'
                                 ? '<span class="badge bg-success">Presença confirmada</span>'
                                 : '<span class="badge bg-warning text-dark">Aguardando</span>'}
                         </div>
@@ -417,23 +730,32 @@ const Events = (() => {
     /* ─── Locations list loading ──────────────────────────── */
     async function loadLocationsList() {
         const list = document.getElementById('locationsList');
-        if (!list) return;
+        if (!list || !App.isAdmin()) return;
         const res = await App.get('location.listAll');
         if (!res.ok) return;
-        list.innerHTML = (res.locations || []).map(l => `
+        list.innerHTML = (res.locations || []).map(l => {
+            const ativo = l.status === 'ativo';
+            return `
             <div class="d-flex justify-content-between align-items-center mb-2">
-                <span>${App.escapeHtml(l.nome)} ${l.ativo ? '' : '<span class="badge bg-secondary ms-1">Inativo</span>'}</span>
-                <button class="btn btn-sm btn-outline-secondary btnToggleLocation" data-id="${l.id}" data-ativo="${l.ativo}">
-                    ${l.ativo ? '<i class="bi bi-eye-slash"></i>' : '<i class="bi bi-eye"></i>'}
+                <span>${App.escapeHtml(l.nome)} ${ativo ? '' : '<span class="badge bg-secondary ms-1">Inativo</span>'}</span>
+                <button class="btn btn-sm btn-outline-secondary btnToggleLocation" data-id="${l.id}" data-status="${l.status}" data-nome="${App.escapeHtml(l.nome)}">
+                    ${ativo ? '<i class="bi bi-eye-slash"></i>' : '<i class="bi bi-eye"></i>'}
                 </button>
-            </div>
-        `).join('');
+            </div>`;
+        }).join('');
 
         list.querySelectorAll('.btnToggleLocation').forEach(btn => {
             btn.addEventListener('click', async () => {
-                const ativo = btn.dataset.ativo === '1' ? 0 : 1;
-                await App.api('location.update', { body: { id: btn.dataset.id, ativo } });
-                loadLocationsList();
+                const newStatus = btn.dataset.status === 'ativo' ? 'inativo' : 'ativo';
+                const res = await App.api('location.update', {
+                    body: { id: btn.dataset.id, nome: btn.dataset.nome, status: newStatus }
+                });
+                if (res.ok) {
+                    loadLocationsList();
+                    loadLocationsSelect('activityLocalId');
+                } else {
+                    App.toast(res.error || 'Erro', 'danger');
+                }
             });
         });
     }
@@ -444,8 +766,14 @@ const Events = (() => {
         if (res.ok) {
             App.toast('Atividade excluída.', 'info');
             const evId = document.getElementById('eventDetailModal')?.dataset?.eventoId;
-            if (evId) showEventDetail(evId);
+            const actId = document.getElementById('activityDetailModal')?.dataset?.activityId;
+            if (actId && String(actId) === String(id)) {
+                App.closeModal('activityDetailModal');
+            } else if (evId) {
+                showEventDetail(evId);
+            }
             Calendar.loadActivities();
+            if (window.ActivitiesManage) ActivitiesManage.refreshIfOpen();
         } else {
             App.toast(res.error || 'Erro', 'danger');
         }
@@ -463,7 +791,16 @@ const Events = (() => {
         window.location.href = `${base}/?action=export.ics&atividade_id=${actId}`;
     }
 
+    async function copyActivityLink(actId) {
+        const url = App.activityUrl(actId);
+        if (await App.copyToClipboard(url)) {
+            App.toast('Link da atividade copiado!', 'success');
+        }
+    }
+
     document.addEventListener('DOMContentLoaded', init);
 
-    return { showEventDetail, openEventForm, openActivityForm, openCheckinPanel };
+    return { showEventDetail, showActivityDetail, openEventForm, openActivityForm, openCheckinPanel, openCreateChoice };
 })();
+
+window.Events = Events;

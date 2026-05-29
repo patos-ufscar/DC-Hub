@@ -10,14 +10,13 @@
                 <form id="activityForm">
                     <input type="hidden" id="activityFormId" name="id" value="">
                     <div class="mb-3">
-                        <label for="activityEventoId" class="form-label">Evento</label>
-                        <select class="form-select" id="activityEventoId" name="evento_id" required>
-                            <option value="">Selecione o evento...</option>
-                        </select>
-                    </div>
-                    <div class="mb-3">
                         <label for="activityTitulo" class="form-label">Título da Atividade</label>
                         <input type="text" class="form-control" id="activityTitulo" name="titulo" required maxlength="200">
+                    </div>
+                    <div class="mb-3">
+                        <label for="activityDescricao" class="form-label">Descrição</label>
+                        <textarea class="form-control" id="activityDescricao" name="descricao" rows="2" maxlength="2000"
+                                  placeholder="Informações sobre a atividade (opcional)"></textarea>
                     </div>
                     <div class="row">
                         <div class="col-md-4 mb-3">
@@ -45,10 +44,53 @@
                         </div>
                     </div>
                     <div class="mb-3">
+                        <label for="activityVagasLimite" class="form-label">Limite de vagas</label>
+                        <input type="number" class="form-control" id="activityVagasLimite" name="vagas_limite"
+                               min="1" placeholder="Deixe vazio para vagas ilimitadas">
+                        <div class="form-text">Inscrições (RSVP) respeitam este limite. Vazio = ilimitado.</div>
+                    </div>
+                    <div class="mb-3">
+                        <div class="form-check">
+                            <input class="form-check-input" type="checkbox" id="activityOfereceCert" name="oferece_certificado" value="1" checked>
+                            <label class="form-check-label" for="activityOfereceCert">
+                                Oferecer certificado para esta atividade
+                            </label>
+                        </div>
+                    </div>
+                    <div class="mb-3" id="activityCertFields">
                         <label for="activityDescCert" class="form-label">Descrição para o Certificado</label>
-                        <textarea class="form-control" id="activityDescCert" name="descricao_certificado" rows="2" required></textarea>
+                        <textarea class="form-control" id="activityDescCert" name="descricao_certificado" rows="2"></textarea>
                         <div class="form-text">Texto que aparecerá no certificado do participante.</div>
                     </div>
+
+                    <hr class="my-3">
+                    <div class="mb-3">
+                        <div class="form-check">
+                            <input class="form-check-input" type="checkbox" id="activityAssociadaEvento" name="associada_evento" value="1">
+                            <label class="form-check-label" for="activityAssociadaEvento">
+                                Esta atividade está associada a um evento
+                            </label>
+                        </div>
+                        <div class="form-text">Marque se a atividade faz parte de um evento maior (ex.: ciclo de oficinas). Caso contrário, ela aparece de forma avulsa no calendário.</div>
+                    </div>
+                    <div class="mb-3 d-none" id="activityEventFields">
+                        <label for="activityEventoId" class="form-label">Evento</label>
+                        <select class="form-select" id="activityEventoId" name="evento_id">
+                            <option value="">Selecione o evento...</option>
+                        </select>
+                    </div>
+                    <div class="mb-3 d-none" id="activityGrupoProjInfo">
+                        <label class="form-label">Grupo organizador</label>
+                        <p class="form-control-plaintext mb-0 fw-semibold" id="activityGrupoProjNome"></p>
+                        <div class="form-text">Definido automaticamente pelo seu perfil de projeto.</div>
+                    </div>
+                    <div class="mb-3 d-none" id="activityGrupoFields">
+                        <label for="activityGrupoId" class="form-label">Grupo organizador</label>
+                        <select class="form-select" id="activityGrupoId" name="grupo_id">
+                            <option value="">Selecione o grupo...</option>
+                        </select>
+                    </div>
+
                     <div id="activityFormError" class="alert alert-danger d-none"></div>
                     <div class="d-flex gap-2">
                         <button type="submit" class="btn btn-dc-primary flex-fill">Salvar</button>

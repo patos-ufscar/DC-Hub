@@ -37,6 +37,9 @@ class AuthController
             Response::error('Email ou senha incorretos.');
         }
 
+        $this->userModel->ensurePresencaUuid((int) $user['id']);
+        $user = $this->userModel->findById((int) $user['id']);
+
         Session::regenerate();
         Session::setUser($user);
 
@@ -49,6 +52,7 @@ class AuthController
                 'role'          => $user['role'],
                 'grupo_id'      => $user['grupo_id'],
                 'grupo_nome'    => $user['grupo_nome'],
+                'presenca_uuid' => $user['presenca_uuid'] ?? null,
             ],
         ]);
     }
@@ -99,6 +103,7 @@ class AuthController
                 'role'          => $user['role'],
                 'grupo_id'      => $user['grupo_id'],
                 'grupo_nome'    => $user['grupo_nome'],
+                'presenca_uuid' => $user['presenca_uuid'] ?? null,
             ],
         ]);
     }

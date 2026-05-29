@@ -43,6 +43,7 @@
                                         <th>Email</th>
                                         <th>Perfil</th>
                                         <th>Grupo</th>
+                                        <th class="text-end">Ações</th>
                                     </tr>
                                 </thead>
                                 <tbody id="adminUsersList"></tbody>

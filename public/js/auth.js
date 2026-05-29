@@ -6,6 +6,18 @@
  */
 const Auth = (() => {
 
+    function reopenActivityFromUrl() {
+        let id = new URLSearchParams(window.location.search).get('atividade');
+        if (!id) {
+            try {
+                id = sessionStorage.getItem('dc_pending_atividade');
+            } catch { /* ignore */ }
+        }
+        if (id && window.Events?.showActivityDetail) {
+            setTimeout(() => Events.showActivityDetail(id), 350);
+        }
+    }
+
     function init() {
         /* ─── Login form ─────────────────────────────────── */
         document.getElementById('loginForm')?.addEventListener('submit', async (e) => {
@@ -19,6 +31,7 @@ const Auth = (() => {
                 App.toast('Bem-vindo!', 'success');
                 App.updateUIForAuth();
                 Calendar.loadActivities();
+                reopenActivityFromUrl();
             } else {
                 App.showFormError('loginError', res.error || 'Erro ao entrar.');
             }
@@ -40,6 +53,7 @@ const Auth = (() => {
                 App.toast('Cadastro realizado!', 'success');
                 App.updateUIForAuth();
                 Calendar.loadActivities();
+                reopenActivityFromUrl();
             } else {
                 App.showFormError('registerError', res.error || 'Erro no cadastro.');
             }
@@ -59,14 +73,16 @@ const Auth = (() => {
         });
 
         /* ─── Logout ─────────────────────────────────────── */
-        document.getElementById('btnLogout')?.addEventListener('click', async (e) => {
+        const logoutHandler = async (e) => {
             e.preventDefault();
             await App.api('auth.logout');
             App.cfg.user = null;
             App.updateUIForAuth();
             App.toast('Sessão encerrada.', 'info');
             Calendar.loadActivities();
-        });
+        };
+        document.getElementById('btnLogout')?.addEventListener('click', logoutHandler);
+        document.getElementById('btnLogoutDesktop')?.addEventListener('click', logoutHandler);
 
         /* ─── Profile modal – populate on open ───────────── */
         document.getElementById('profileModal')?.addEventListener('show.bs.modal', () => {

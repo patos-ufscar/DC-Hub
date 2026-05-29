@@ -136,10 +136,23 @@ class EventController
         $activityModel = new \App\Models\Activity($this->db);
         $activities = $activityModel->listByEvent($id);
 
+        if (Session::isLoggedIn()) {
+            $regModel = new \App\Models\Registration($this->db);
+            $userId = (int) Session::get('user_id');
+            foreach ($activities as &$activity) {
+                $activity['usuario_inscrito'] = $regModel->getUserStatus($userId, (int) $activity['id']) !== null;
+                $activity['vagas_disponiveis'] = $activity['vagas_limite'] === null
+                    ? null
+                    : max(0, (int) $activity['vagas_limite'] - (int) $activity['vagas_ocupadas']);
+            }
+            unset($activity);
+        }
+
+        $event['atividades'] = $activities;
+
         Response::json([
-            'success'    => true,
-            'event'      => $event,
-            'activities' => $activities,
+            'success' => true,
+            'event'   => $event,
         ]);
     }
 

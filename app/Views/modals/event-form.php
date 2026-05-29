@@ -13,11 +13,17 @@
                         <label for="eventTitulo" class="form-label">Título do Evento</label>
                         <input type="text" class="form-control" id="eventTitulo" name="titulo" required maxlength="200">
                     </div>
-                    <div class="mb-3">
+                    <div class="mb-3" id="eventGrupoAdminFields">
                         <label for="eventGrupoId" class="form-label">Grupo Organizador</label>
                         <select class="form-select" id="eventGrupoId" name="grupo_id" required>
                             <option value="">Selecione...</option>
                         </select>
+                    </div>
+                    <div class="mb-3 d-none" id="eventGrupoProjInfo">
+                        <label class="form-label">Grupo Organizador</label>
+                        <p class="form-control-plaintext mb-0 fw-semibold" id="eventGrupoProjNome"></p>
+                        <input type="hidden" id="eventGrupoIdHidden" name="grupo_id" value="">
+                        <div class="form-text">Definido automaticamente pelo seu perfil de projeto.</div>
                     </div>
                     <div class="mb-3">
                         <label for="eventDescricao" class="form-label">Descrição</label>

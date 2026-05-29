@@ -20,16 +20,51 @@ const Calendar = (() => {
     const grid       = () => document.getElementById('calendarGrid');
 
     /* ─── Data fetching ──────────────────────────────────── */
-    async function loadActivities() {
-        const m = String(currentMonth + 1).padStart(2, '0');
-        let action = `calendar.data&month=${m}&year=${currentYear}`;
-        if (grupoFilter) action += `&grupo_id=${grupoFilter}`;
-        const data = await App.get(action);
-        if (data.ok) {
-            activities = data.activities || [];
-            applyFilters();
-            render();
+    function activityDate(act) {
+        return act.data ? String(act.data).slice(0, 10) : '';
+    }
+
+    function activitiesOnDate(dateStr) {
+        return filteredActivities.filter(a => activityDate(a) === dateStr);
+    }
+
+    function syncWeekStartToContext() {
+        const ref = currentDayDate
+            ? new Date(currentDayDate + 'T12:00:00')
+            : new Date(currentYear, currentMonth, 15);
+        currentWeekStart = new Date(ref);
+        currentWeekStart.setHours(0, 0, 0, 0);
+        currentWeekStart.setDate(ref.getDate() - ref.getDay());
+    }
+
+    function getLoadQuery() {
+        if (currentView === 'week') {
+            if (!currentWeekStart) syncWeekStartToContext();
+            const start = new Date(currentWeekStart);
+            const end = new Date(currentWeekStart);
+            end.setDate(end.getDate() + 6);
+            return `calendar.data&start=${dateToStr(start)}&end=${dateToStr(end)}`;
         }
+        if (currentView === 'day' && currentDayDate) {
+            return `calendar.data&start=${currentDayDate}&end=${currentDayDate}`;
+        }
+        const m = String(currentMonth + 1).padStart(2, '0');
+        return `calendar.data&month=${m}&year=${currentYear}`;
+    }
+
+    async function loadActivities() {
+        let action = getLoadQuery();
+        if (grupoFilter) action += `&grupo_id=${grupoFilter}`;
+
+        try {
+            const data = await App.get(action);
+            activities = data.ok ? (data.activities || []) : [];
+        } catch {
+            activities = [];
+        }
+
+        applyFilters();
+        render();
     }
 
     function applyFilters() {
@@ -67,7 +102,7 @@ const Calendar = (() => {
         for (let d = 1; d <= totalDays; d++) {
             const dateStr = `${currentYear}-${String(currentMonth + 1).padStart(2, '0')}-${String(d).padStart(2, '0')}`;
             const isToday = today.getFullYear() === currentYear && today.getMonth() === currentMonth && today.getDate() === d;
-            const dayActivities = filteredActivities.filter(a => a.data === dateStr);
+            const dayActivities = activitiesOnDate(dateStr);
             container.appendChild(createDayCell(d, false, isToday, dayActivities, dateStr));
         }
 
@@ -90,10 +125,10 @@ const Calendar = (() => {
 
         if (!muted && dateStr) {
             cell.addEventListener('click', (e) => {
-                if (e.target.closest('.event-card')) return;
+                if (e.target.closest('.event-card') || e.target.closest('.day-events-meta')) return;
                 currentDayDate = dateStr;
                 currentView = 'day';
-                render();
+                loadActivities();
                 updateViewButton();
             });
         }
@@ -102,7 +137,10 @@ const Calendar = (() => {
             const card = document.createElement('div');
             card.className = 'event-card';
             if (act.grupo_cor) card.style.borderLeftColor = act.grupo_cor;
-            card.innerHTML = `<span class="event-time">${App.formatTime(act.hora_inicio)}</span> ${App.escapeHtml(act.titulo)}`;
+            card.innerHTML = `
+                <div class="event-title">${App.escapeHtml(act.titulo)}</div>
+                ${act.grupo_nome ? `<div class="event-group">${App.escapeHtml(act.grupo_nome)}</div>` : ''}
+                <div class="event-time">${App.formatTime(act.hora_inicio)}</div>`;
             card.addEventListener('click', (e) => {
                 e.stopPropagation();
                 openActivityDetail(act);
@@ -110,10 +148,74 @@ const Calendar = (() => {
             cell.appendChild(card);
         });
 
+        if (acts.length > 0) {
+            const meta = document.createElement('div');
+            meta.className = 'day-events-meta';
+            meta.setAttribute('aria-label', `${acts.length} atividade(s)`);
+            meta.innerHTML = `<span class="day-event-count">${acts.length}</span>`;
+            meta.addEventListener('click', (e) => {
+                e.stopPropagation();
+                currentDayDate = dateStr;
+                currentView = 'day';
+                loadActivities();
+                updateViewButton();
+            });
+            cell.appendChild(meta);
+        }
+
         return cell;
     }
 
     /* ─── Rendering – Week View ──────────────────────────── */
+    const WEEK_START_HOUR = 6;
+    const WEEK_END_HOUR = 22;
+    const WEEK_HOUR_HEIGHT = 48;
+
+    function parseTimeToMinutes(timeStr) {
+        if (!timeStr) return 0;
+        const [h, m] = timeStr.split(':').map(Number);
+        return h * 60 + (m || 0);
+    }
+
+    function renderWeekTimeSlots(body) {
+        body.className = 'week-day-body week-time-grid';
+        body.style.height = `${(WEEK_END_HOUR - WEEK_START_HOUR) * WEEK_HOUR_HEIGHT}px`;
+        for (let h = WEEK_START_HOUR; h < WEEK_END_HOUR; h++) {
+            const slot = document.createElement('div');
+            slot.className = 'week-hour-slot';
+            body.appendChild(slot);
+        }
+    }
+
+    function appendWeekEvent(body, act) {
+        const startMin = parseTimeToMinutes(act.hora_inicio);
+        const endMin = parseTimeToMinutes(act.hora_fim);
+        const gridStart = WEEK_START_HOUR * 60;
+        const gridEnd = WEEK_END_HOUR * 60;
+
+        if (endMin <= gridStart || startMin >= gridEnd) return;
+
+        const clampedStart = Math.max(startMin, gridStart);
+        const clampedEnd = Math.min(endMin, gridEnd);
+        const top = ((clampedStart - gridStart) / 60) * WEEK_HOUR_HEIGHT;
+        const height = Math.max(((clampedEnd - clampedStart) / 60) * WEEK_HOUR_HEIGHT, 24);
+
+        const card = document.createElement('div');
+        card.className = 'event-card week-event-card';
+        if (act.grupo_cor) card.style.borderLeftColor = act.grupo_cor;
+        card.style.top = `${top}px`;
+        card.style.height = `${height}px`;
+        card.innerHTML = `
+            <div class="event-title">${App.escapeHtml(act.titulo)}</div>
+            ${act.grupo_nome ? `<div class="event-group">${App.escapeHtml(act.grupo_nome)}</div>` : ''}
+            <div class="event-time">${App.formatTime(act.hora_inicio)} – ${App.formatTime(act.hora_fim)}</div>`;
+        card.addEventListener('click', (e) => {
+            e.stopPropagation();
+            openActivityDetail(act);
+        });
+        body.appendChild(card);
+    }
+
     function renderWeek() {
         const container = grid();
         if (!container) return;
@@ -122,16 +224,31 @@ const Calendar = (() => {
 
         if (!currentWeekStart) {
             const now = new Date();
-            const dow = now.getDay();
             currentWeekStart = new Date(now);
-            currentWeekStart.setDate(now.getDate() - dow);
+            currentWeekStart.setDate(now.getDate() - now.getDay());
         }
+
+        const scroll = document.createElement('div');
+        scroll.className = 'week-scroll';
+
+        const timeRail = document.createElement('div');
+        timeRail.className = 'week-time-rail';
+        for (let h = WEEK_START_HOUR; h < WEEK_END_HOUR; h++) {
+            const label = document.createElement('div');
+            label.className = 'week-hour-label';
+            label.textContent = `${String(h).padStart(2, '0')}:00`;
+            timeRail.appendChild(label);
+        }
+        scroll.appendChild(timeRail);
+
+        const columnsWrap = document.createElement('div');
+        columnsWrap.className = 'week-columns';
 
         for (let i = 0; i < 7; i++) {
             const d = new Date(currentWeekStart);
             d.setDate(currentWeekStart.getDate() + i);
             const dateStr = dateToStr(d);
-            const dayActs = filteredActivities.filter(a => a.data === dateStr);
+            const dayActs = activitiesOnDate(dateStr);
 
             const col = document.createElement('div');
             col.className = 'week-day-column';
@@ -142,17 +259,15 @@ const Calendar = (() => {
             col.appendChild(header);
 
             const body = document.createElement('div');
-            body.className = 'week-day-body';
-            dayActs.forEach(act => {
-                const card = document.createElement('div');
-                card.className = 'event-card';
-                card.innerHTML = `<span class="event-time">${App.formatTime(act.hora_inicio)} - ${App.formatTime(act.hora_fim)}</span><br>${App.escapeHtml(act.titulo)}`;
-                card.addEventListener('click', () => openActivityDetail(act));
-                body.appendChild(card);
-            });
+            renderWeekTimeSlots(body);
+            dayActs.forEach(act => appendWeekEvent(body, act));
+
             col.appendChild(body);
-            container.appendChild(col);
+            columnsWrap.appendChild(col);
         }
+
+        scroll.appendChild(columnsWrap);
+        container.appendChild(scroll);
     }
 
     /* ─── Rendering – Day View ───────────────────────────── */
@@ -163,12 +278,17 @@ const Calendar = (() => {
         container.innerHTML = '';
 
         if (!currentDayDate) currentDayDate = dateToStr(new Date());
-        const dayActs = filteredActivities.filter(a => a.data === currentDayDate).sort((a, b) => a.hora_inicio.localeCompare(b.hora_inicio));
+        const dayActs = activitiesOnDate(currentDayDate).sort((a, b) => a.hora_inicio.localeCompare(b.hora_inicio));
 
         const d = new Date(currentDayDate + 'T00:00:00');
         const header = document.createElement('div');
         header.className = 'day-view-header';
-        header.innerHTML = `<h4>${App.DIAS_SEMANA[d.getDay()]}, ${d.getDate()} de ${App.MESES[d.getMonth()]} de ${d.getFullYear()}</h4>`;
+        header.innerHTML = `
+            <button type="button" class="day-back-btn">
+                <i class="bi bi-arrow-left"></i> Voltar ao mês
+            </button>
+            <h4>${App.DIAS_SEMANA[d.getDay()]}, ${d.getDate()} de ${App.MESES[d.getMonth()]} de ${d.getFullYear()}</h4>`;
+        header.querySelector('.day-back-btn')?.addEventListener('click', backToMonth);
         container.appendChild(header);
 
         if (dayActs.length === 0) {
@@ -199,9 +319,17 @@ const Calendar = (() => {
 
     /* ─── Activity detail click ──────────────────────────── */
     function openActivityDetail(act) {
-        if (window.Events && typeof Events.showEventDetail === 'function') {
-            Events.showEventDetail(act.evento_id);
+        const id = act?.id ?? act;
+        if (!id) {
+            App.toast('Atividade inválida.', 'danger');
+            return;
         }
+        const ev = window.Events;
+        if (!ev?.showActivityDetail) {
+            App.toast('Módulo de eventos não carregou. Recarregue com Ctrl+F5.', 'danger');
+            return;
+        }
+        ev.showActivityDetail(id);
     }
 
     /* ─── Main render dispatcher ─────────────────────────── */
@@ -246,6 +374,8 @@ const Calendar = (() => {
             currentMonth = d.getMonth();
             currentYear = d.getFullYear();
         }
+        updateLabels();
+        render();
         loadActivities();
     }
 
@@ -264,34 +394,48 @@ const Calendar = (() => {
             currentMonth = d.getMonth();
             currentYear = d.getFullYear();
         }
+        updateLabels();
+        render();
         loadActivities();
     }
 
     function cycleView() {
+        if (currentView === 'day') return;
+
         if (currentView === 'month') {
             currentView = 'week';
-            if (!currentWeekStart) {
-                const now = new Date();
-                currentWeekStart = new Date(now);
-                currentWeekStart.setDate(now.getDate() - now.getDay());
-            }
-        } else if (currentView === 'week') {
-            currentView = 'day';
-            if (!currentDayDate) currentDayDate = dateToStr(new Date());
+            syncWeekStartToContext();
         } else {
             currentView = 'month';
         }
+        loadActivities();
+        updateViewButton();
+    }
+
+    function backToMonth() {
+        currentView = 'month';
         render();
         updateViewButton();
     }
 
+    function openDayView(dateStr) {
+        currentDayDate = dateStr;
+        currentView = 'day';
+        loadActivities();
+        updateViewButton();
+    }
+
     function updateViewButton() {
+        const pill = document.getElementById('btnViewToggle');
         const weekIcon  = document.getElementById('iconWeekView');
         const monthIcon = document.getElementById('iconMonthView');
-        if (weekIcon)  weekIcon.classList.toggle('view-active',  currentView === 'week');
+
+        if (pill) {
+            pill.classList.toggle('d-none', currentView === 'day');
+            pill.title = currentView === 'week' ? 'Ver mês' : 'Ver semana';
+        }
+        if (weekIcon)  weekIcon.classList.toggle('view-active', currentView === 'week');
         if (monthIcon) monthIcon.classList.toggle('view-active', currentView === 'month');
-        // day view: both slightly active
-        if (weekIcon && currentView === 'day') weekIcon.classList.add('view-active');
     }
 
     /* ─── Helpers ─────────────────────────────────────────── */
@@ -305,7 +449,7 @@ const Calendar = (() => {
     }
 
     /* ─── Init ────────────────────────────────────────────── */
-    function init() {
+    async function init() {
         // Nav buttons
         document.getElementById('btnPrevMonth')?.addEventListener('click', prev);
         document.getElementById('btnNextMonth')?.addEventListener('click', next);
@@ -319,7 +463,8 @@ const Calendar = (() => {
 
         // Search
         let searchTimeout;
-        document.getElementById('calendarSearch')?.addEventListener('input', function () {
+        const searchInput = document.getElementById('calendarSearch');
+        searchInput?.addEventListener('input', function () {
             clearTimeout(searchTimeout);
             searchTimeout = setTimeout(() => {
                 searchQuery = this.value.trim();
@@ -328,10 +473,11 @@ const Calendar = (() => {
             }, 300);
         });
 
-        // Populate groups select
-        loadGroupsSelect();
+        await loadGroupsSelect();
 
         updateViewButton();
+        updateLabels();
+        render();
         loadActivities();
     }
 
@@ -348,9 +494,19 @@ const Calendar = (() => {
             opt.textContent = g.nome;
             sel.appendChild(opt);
         });
+        if (App.isProj() && App.cfg.user?.grupo_id && res.groups.length === 1) {
+            sel.value = String(App.cfg.user.grupo_id);
+            grupoFilter = sel.value;
+        }
     }
 
-    document.addEventListener('DOMContentLoaded', init);
+    if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', init);
+    } else {
+        init();
+    }
 
-    return { loadActivities, render, cycleView, prev, next };
+    return { loadActivities, render, cycleView, prev, next, backToMonth, openDayView };
 })();
+
+window.Calendar = Calendar;

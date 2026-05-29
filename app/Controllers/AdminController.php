@@ -8,17 +8,20 @@ use App\Core\Response;
 use App\Core\Session;
 use App\Models\User;
 use App\Models\Group;
+use App\Models\Location;
 use PDO;
 
 class AdminController
 {
     private User $userModel;
     private Group $groupModel;
+    private Location $locationModel;
 
     public function __construct(private PDO $db)
     {
-        $this->userModel  = new User($db);
-        $this->groupModel = new Group($db);
+        $this->userModel     = new User($db);
+        $this->groupModel    = new Group($db);
+        $this->locationModel = new Location($db);
     }
 
     public function listUsers(): void
@@ -36,7 +39,7 @@ class AdminController
             "SELECT sr.*, u.email, u.nome_exibicao, g.nome AS grupo_nome
              FROM solicitacoes_role sr
              JOIN usuarios u ON u.id = sr.user_id
-             JOIN grupos g ON g.id = sr.grupo_id
+             LEFT JOIN grupos g ON g.id = sr.grupo_id
              WHERE sr.status = 'pendente'
              ORDER BY sr.created_at DESC"
         );
@@ -66,6 +69,12 @@ class AdminController
 
         if (!$request) {
             Response::error('Solicitação não encontrada.', 404);
+        }
+
+        if (empty($request['grupo_id'])) {
+            Response::error(
+                'Este pedido propõe um grupo ainda não cadastrado. Cadastre o grupo antes de aprovar.'
+            );
         }
 
         // Update request status
@@ -117,30 +126,59 @@ class AdminController
             Response::error('Token CSRF inválido.', 403);
         }
 
-        $grupoId = (int) ($_POST['grupo_id'] ?? 0);
-        if ($grupoId <= 0) {
-            Response::error('Selecione um grupo.');
-        }
-
+        $grupoIdRaw = trim((string) ($_POST['grupo_id'] ?? ''));
+        $grupoNomeProposto = trim($_POST['grupo_nome_proposto'] ?? '');
+        $mensagem = trim($_POST['mensagem'] ?? '');
         $userId = (int) Session::get('user_id');
 
-        // Check for existing pending request
-        $check = $this->db->prepare(
-            "SELECT id FROM solicitacoes_role WHERE user_id = :uid AND grupo_id = :gid AND status = 'pendente'"
-        );
-        $check->bindValue(':uid', $userId, PDO::PARAM_INT);
-        $check->bindValue(':gid', $grupoId, PDO::PARAM_INT);
-        $check->execute();
+        $isNewGroup = $grupoIdRaw === '' || $grupoIdRaw === 'new';
+        $grupoId = null;
+
+        if ($isNewGroup) {
+            if ($grupoNomeProposto === '') {
+                Response::error('Informe o nome do grupo de extensão.');
+            }
+        } else {
+            $grupoId = (int) $grupoIdRaw;
+            if ($grupoId <= 0) {
+                Response::error('Selecione um grupo válido.');
+            }
+        }
+
+        if ($isNewGroup) {
+            $check = $this->db->prepare(
+                "SELECT id FROM solicitacoes_role
+                 WHERE user_id = :uid AND grupo_id IS NULL AND grupo_nome_proposto = :nome AND status = 'pendente'"
+            );
+            $check->bindValue(':uid', $userId, PDO::PARAM_INT);
+            $check->bindValue(':nome', $grupoNomeProposto);
+            $check->execute();
+        } else {
+            $check = $this->db->prepare(
+                "SELECT id FROM solicitacoes_role
+                 WHERE user_id = :uid AND grupo_id = :gid AND status = 'pendente'"
+            );
+            $check->bindValue(':uid', $userId, PDO::PARAM_INT);
+            $check->bindValue(':gid', $grupoId, PDO::PARAM_INT);
+            $check->execute();
+        }
 
         if ($check->fetch()) {
             Response::error('Já existe uma solicitação pendente para este grupo.');
         }
 
         $stmt = $this->db->prepare(
-            'INSERT INTO solicitacoes_role (user_id, grupo_id) VALUES (:uid, :gid)'
+            'INSERT INTO solicitacoes_role (user_id, grupo_id, grupo_nome_proposto, mensagem)
+             VALUES (:uid, :gid, :nome, :msg)'
         );
         $stmt->bindValue(':uid', $userId, PDO::PARAM_INT);
-        $stmt->bindValue(':gid', $grupoId, PDO::PARAM_INT);
+        if ($grupoId === null) {
+            $stmt->bindValue(':gid', null, PDO::PARAM_NULL);
+        } else {
+            $stmt->bindValue(':gid', $grupoId, PDO::PARAM_INT);
+        }
+        $stmt->bindValue(':nome', $isNewGroup ? $grupoNomeProposto : null);
+        $stmt->bindValue(':msg', $mensagem !== '' ? $mensagem : null);
         $stmt->execute();
 
         Response::success('Solicitação enviada. Aguarde a aprovação do administrador.');
@@ -148,13 +186,129 @@ class AdminController
 
     public function listGroups(): void
     {
+        $this->requireAdmin();
         $groups = $this->groupModel->listAll();
         Response::json(['success' => true, 'groups' => $groups]);
     }
 
+    public function updateUser(): void
+    {
+        $this->requireAdmin();
+
+        if (!Csrf::validateRequest()) {
+            Response::error('Token CSRF inválido.', 403);
+        }
+
+        $userId  = (int) ($_POST['user_id'] ?? 0);
+        $role    = $_POST['role'] ?? '';
+        $grupoId = isset($_POST['grupo_id']) && $_POST['grupo_id'] !== ''
+            ? (int) $_POST['grupo_id']
+            : null;
+
+        if ($userId <= 0 || !in_array($role, ['user', 'proj', 'adm'], true)) {
+            Response::error('Dados inválidos.');
+        }
+
+        if ($role === 'proj' && ($grupoId === null || $grupoId <= 0)) {
+            Response::error('Selecione um grupo para usuários de projeto.');
+        }
+
+        if ($role !== 'proj') {
+            $grupoId = null;
+        }
+
+        $currentUserId = (int) Session::get('user_id');
+        if ($userId === $currentUserId && $role !== 'adm') {
+            Response::error('Você não pode remover seu próprio perfil de administrador.');
+        }
+
+        if (!$this->userModel->findById($userId)) {
+            Response::error('Usuário não encontrado.', 404);
+        }
+
+        $this->userModel->updateRole($userId, $role, $grupoId);
+        Response::success('Usuário atualizado.');
+    }
+
+    public function deleteUser(): void
+    {
+        $this->requireAdmin();
+
+        if (!Csrf::validateRequest()) {
+            Response::error('Token CSRF inválido.', 403);
+        }
+
+        $userId = (int) ($_POST['user_id'] ?? 0);
+        if ($userId <= 0) {
+            Response::error('ID inválido.');
+        }
+
+        if ($userId === (int) Session::get('user_id')) {
+            Response::error('Você não pode excluir sua própria conta.');
+        }
+
+        if (!$this->userModel->findById($userId)) {
+            Response::error('Usuário não encontrado.', 404);
+        }
+
+        $this->userModel->delete($userId);
+        Response::success('Usuário excluído.');
+    }
+
+    public function deleteGroup(): void
+    {
+        $this->requireAdmin();
+
+        if (!Csrf::validateRequest()) {
+            Response::error('Token CSRF inválido.', 403);
+        }
+
+        $id = (int) ($_POST['id'] ?? 0);
+        if ($id <= 0) {
+            Response::error('ID inválido.');
+        }
+
+        if ($this->groupModel->countEvents($id) > 0) {
+            Response::error('Não é possível excluir: o grupo possui eventos cadastrados. Inative-o em vez disso.');
+        }
+
+        $this->groupModel->delete($id);
+        Response::success('Grupo excluído.');
+    }
+
+    public function deleteLocation(): void
+    {
+        $this->requireAdmin();
+
+        if (!Csrf::validateRequest()) {
+            Response::error('Token CSRF inválido.', 403);
+        }
+
+        $id = (int) ($_POST['id'] ?? 0);
+        if ($id <= 0) {
+            Response::error('ID inválido.');
+        }
+
+        if ($this->locationModel->countActivities($id) > 0) {
+            Response::error('Não é possível excluir: o local está em uso por atividades. Inative-o em vez disso.');
+        }
+
+        $this->locationModel->delete($id);
+        Response::success('Local excluído.');
+    }
+
     public function listActiveGroups(): void
     {
-        $groups = $this->groupModel->listActive();
+        $role = Session::get('user_role');
+        $grupoId = (int) Session::get('user_grupo_id');
+
+        if ($role === 'proj' && $grupoId > 0) {
+            $group = $this->groupModel->findById($grupoId);
+            $groups = ($group && ($group['status'] ?? '') === 'ativo') ? [$group] : [];
+        } else {
+            $groups = $this->groupModel->listActive();
+        }
+
         Response::json(['success' => true, 'groups' => $groups]);
     }
 

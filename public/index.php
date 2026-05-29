@@ -40,6 +40,7 @@ try {
         'activity.update'      => (new App\Controllers\ActivityController($db))->update(),
         'activity.delete'      => (new App\Controllers\ActivityController($db))->delete(),
         'activity.detail'      => (new App\Controllers\ActivityController($db))->detail(),
+        'activity.listManage'  => (new App\Controllers\ActivityController($db))->listManage(),
 
         // Locations
         'location.list'        => (new App\Controllers\LocationController($db))->list(),
@@ -52,6 +53,9 @@ try {
         'registration.dashboard'        => (new App\Controllers\RegistrationController($db))->dashboard(),
         'registration.attendees'        => (new App\Controllers\RegistrationController($db))->attendees(),
         'registration.validate'         => (new App\Controllers\RegistrationController($db))->validatePresence(),
+        'registration.checkinList'      => (new App\Controllers\RegistrationController($db))->checkinList(),
+        'registration.scanPresence'     => (new App\Controllers\RegistrationController($db))->scanPresence(),
+        'registration.myQr'             => (new App\Controllers\RegistrationController($db))->myQr(),
         'registration.generateCode'     => (new App\Controllers\RegistrationController($db))->generateCode(),
         'registration.redeemCode'       => (new App\Controllers\RegistrationController($db))->redeemCode(),
 
@@ -72,6 +76,10 @@ try {
         'admin.groupsActive'   => (new App\Controllers\AdminController($db))->listActiveGroups(),
         'admin.createGroup'    => (new App\Controllers\AdminController($db))->createGroup(),
         'admin.updateGroup'    => (new App\Controllers\AdminController($db))->updateGroup(),
+        'admin.updateUser'     => (new App\Controllers\AdminController($db))->updateUser(),
+        'admin.deleteUser'     => (new App\Controllers\AdminController($db))->deleteUser(),
+        'admin.deleteGroup'    => (new App\Controllers\AdminController($db))->deleteGroup(),
+        'admin.deleteLocation' => (new App\Controllers\AdminController($db))->deleteLocation(),
         'admin.requestRole'    => (new App\Controllers\AdminController($db))->requestRole(),
 
         default => Response::error('Ação não encontrada.', 404),

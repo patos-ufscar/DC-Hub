@@ -3,9 +3,9 @@
 
     <!-- View Toggle Pill (left) — shows both view icons -->
     <button class="btn-view-pill" id="btnViewToggle" title="Alternar visualização">
-        <img src="assets/images/week-view.svg"  alt="Semana" id="iconWeekView"  class="view-active">
+        <img src="assets/images/week-view.svg"  alt="Semana" id="iconWeekView">
         <div class="pill-divider"></div>
-        <img src="assets/images/grid-view.svg"  alt="Mês"   id="iconMonthView">
+        <img src="assets/images/grid-view.svg"  alt="Mês"   id="iconMonthView" class="view-active">
     </button>
 
     <!-- Add Event FAB (right) — only for Proj/Adm -->

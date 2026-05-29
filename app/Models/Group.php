@@ -57,4 +57,21 @@ class Group
 
         return $stmt->execute();
     }
+
+    public function countEvents(int $id): int
+    {
+        $stmt = $this->db->prepare('SELECT COUNT(*) FROM eventos WHERE grupo_id = :id');
+        $stmt->bindValue(':id', $id, PDO::PARAM_INT);
+        $stmt->execute();
+
+        return (int) $stmt->fetchColumn();
+    }
+
+    public function delete(int $id): bool
+    {
+        $stmt = $this->db->prepare('DELETE FROM grupos WHERE id = :id');
+        $stmt->bindValue(':id', $id, PDO::PARAM_INT);
+
+        return $stmt->execute();
+    }
 }
