@@ -876,11 +876,19 @@ const Events = (() => {
         handleDeepLink();
     }
 
+    function parseDeepLinkId(param) {
+        const raw = new URLSearchParams(window.location.search).get(param);
+        const id = Number(raw);
+        return Number.isInteger(id) && id > 0 ? id : null;
+    }
+
     function handleDeepLink() {
-        let eventoId = App.cfg.deepLink?.evento;
+        let eventoId = parseDeepLinkId('evento');
         if (!eventoId) {
             try {
-                eventoId = sessionStorage.getItem('dc_pending_evento');
+                const stored = sessionStorage.getItem('dc_pending_evento');
+                eventoId = stored ? Number(stored) : null;
+                if (!Number.isInteger(eventoId) || eventoId <= 0) eventoId = null;
             } catch { /* ignore */ }
         }
         if (eventoId) {
@@ -888,10 +896,12 @@ const Events = (() => {
             return;
         }
 
-        let id = App.cfg.deepLink?.atividade;
+        let id = parseDeepLinkId('atividade');
         if (!id) {
             try {
-                id = sessionStorage.getItem('dc_pending_atividade');
+                const stored = sessionStorage.getItem('dc_pending_atividade');
+                id = stored ? Number(stored) : null;
+                if (!Number.isInteger(id) || id <= 0) id = null;
             } catch { /* ignore */ }
         }
         if (id) {

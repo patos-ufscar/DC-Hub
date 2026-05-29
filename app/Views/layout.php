@@ -7,15 +7,6 @@ use App\Core\Session;
 
 $user = Session::getUser();
 $csrfToken = Csrf::generateToken();
-$deepAtividade = isset($_GET['atividade']) ? (int) $_GET['atividade'] : 0;
-if ($deepAtividade <= 0) {
-    $deepAtividade = null;
-}
-$deepEvento = isset($_GET['evento']) ? (int) $_GET['evento'] : 0;
-if ($deepEvento <= 0) {
-    $deepEvento = null;
-}
-
 $pageTitle = 'DC Hub — Calendário do Departamento de Computação';
 $pageDescription = 'Calendário de eventos e atividades do Departamento de Computação (UFSCar). '
     . 'Inscrições, presença por QR Code e certificados. Desenvolvido por PATOS.';
@@ -73,11 +64,7 @@ $ogImage = $pageUrl . '/assets/images/og-image.png';
             csrfToken: <?= json_encode($csrfToken) ?>,
             user: <?= json_encode($user) ?>,
             baseUrl: <?= json_encode(rtrim(dirname($_SERVER['SCRIPT_NAME']), '/')) ?>,
-            publicUrl: <?= json_encode(AppUrl::base()) ?>,
-            deepLink: {
-                atividade: <?= $deepAtividade === null ? 'null' : (string) $deepAtividade ?>,
-                evento: <?= $deepEvento === null ? 'null' : (string) $deepEvento ?>
-            }
+            publicUrl: <?= json_encode(AppUrl::base()) ?>
         };
     </script>
 
