@@ -1,0 +1,84 @@
+name: AI Security Review
+
+on:
+  pull_request:
+    branches: [main]
+
+permissions:
+  contents: read
+  pull-requests: write
+
+jobs:
+  ai-security-review:
+    name: AI security review
+    runs-on: ubuntu-latest
+    env:
+      MIN_SECURITY_SCORE: "7"
+      OPENAI_MODEL: gpt-4o-mini
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Gerar diff do PR
+        run: |
+          set -euo pipefail
+          git fetch origin "${{ github.base_ref }}" --depth=1
+          git diff "origin/${{ github.base_ref }}...HEAD" > pr.diff
+          echo "Linhas no diff: $(wc -l < pr.diff)"
+
+      - name: Avaliar segurança (OpenAI)
+        id: review
+        env:
+          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+          DIFF_PATH: pr.diff
+          REVIEW_OUTPUT: review.json
+        run: python3 scripts/ci/ai_security_review.py
+        continue-on-error: true
+
+      - name: Comentar resultado no PR
+        if: always() && github.event_name == 'pull_request'
+        uses: actions/github-script@v7
+        env:
+          MIN_SECURITY_SCORE: ${{ env.MIN_SECURITY_SCORE }}
+        with:
+          script: |
+            const fs = require('fs');
+            const minScore = Number(process.env.MIN_SECURITY_SCORE || '7');
+            const passed = '${{ steps.review.outcome }}' === 'success';
+            let score = '?';
+            let summary = '';
+            let findings = [];
+            try {
+              const data = JSON.parse(fs.readFileSync('review.json', 'utf8'));
+              score = data.score;
+              summary = data.summary || '';
+              findings = data.findings || [];
+            } catch {
+              summary = 'Não foi possível ler o resultado (API ou diff).';
+            }
+            let body = `## Avaliação de segurança (IA)\n\n`;
+            body += `| | |\n|---|---|\n`;
+            body += `| **Nota** | **${score}**/10 |\n`;
+            body += `| **Mínimo** | ${minScore} |\n`;
+            body += `| **Resultado** | ${passed ? '✅ Aprovado' : '❌ Reprovado'} |\n\n`;
+            if (summary) body += `${summary}\n\n`;
+            if (findings.length) {
+              body += `### Achados\n\n`;
+              for (const f of findings) {
+                body += `- **${(f.severity || 'info').toUpperCase()}** — ${f.title}: ${f.detail}\n`;
+              }
+            }
+            body += `\n---\n_Modelo: \`${{ env.OPENAI_MODEL }}\` · Secret: \`OPENAI_API_KEY\`_`;
+            await github.rest.issues.createComment({
+              issue_number: context.issue.number,
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              body,
+            });
+
+      - name: Falhar se nota < mínimo
+        if: steps.review.outcome != 'success'
+        run: |
+          echo "::error::Avaliação de segurança reprovada (nota < ${MIN_SECURITY_SCORE} ou erro na API)."
+          exit 1
