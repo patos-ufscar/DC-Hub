@@ -97,6 +97,8 @@ CREATE TABLE IF NOT EXISTS atividades (
     oferece_certificado     TINYINT(1) NOT NULL DEFAULT 1,
     descricao_certificado   TEXT DEFAULT NULL,
     vagas_limite            INT UNSIGNED DEFAULT NULL,
+    exibir_vagas_total      TINYINT(1) NOT NULL DEFAULT 0,
+    exibir_vagas_ocupadas   TINYINT(1) NOT NULL DEFAULT 0,
     codigo_resgate          VARCHAR(20) DEFAULT NULL,
     codigo_resgate_expira_em DATETIME DEFAULT NULL,
     created_at              TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,

@@ -49,6 +49,27 @@
                                min="1" placeholder="Deixe vazio para vagas ilimitadas">
                         <div class="form-text">Inscrições (RSVP) respeitam este limite. Vazio = ilimitado.</div>
                     </div>
+                    <div class="mb-3 d-none" id="activityVagasDisplayOpts">
+                        <p class="small text-muted mb-2">O que o público vê sobre vagas (somente com limite definido):</p>
+                        <div class="form-check">
+                            <input class="form-check-input" type="checkbox" id="activityExibirVagasTotal"
+                                   name="exibir_vagas_total" value="1">
+                            <label class="form-check-label" for="activityExibirVagasTotal">
+                                Mostrar quantidade total de vagas
+                            </label>
+                        </div>
+                        <div class="form-check">
+                            <input class="form-check-input" type="checkbox" id="activityExibirVagasOcupadas"
+                                   name="exibir_vagas_ocupadas" value="1">
+                            <label class="form-check-label" for="activityExibirVagasOcupadas">
+                                Mostrar quantas vagas já estão preenchidas
+                            </label>
+                        </div>
+                        <div class="form-text">
+                            Se nenhuma opção estiver marcada, ainda exibimos
+                            <strong>“Poucas vagas restantes”</strong> quando 80% das vagas estiverem ocupadas.
+                        </div>
+                    </div>
                     <div class="mb-3">
                         <div class="form-check">
                             <input class="form-check-input" type="checkbox" id="activityOfereceCert" name="oferece_certificado" value="1" checked>

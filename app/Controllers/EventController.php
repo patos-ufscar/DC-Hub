@@ -3,6 +3,7 @@ declare(strict_types=1);
 
 namespace App\Controllers;
 
+use App\Core\ActivityVagasDisplay;
 use App\Core\AppUrl;
 use App\Core\Csrf;
 use App\Core\Response;
@@ -174,6 +175,8 @@ class EventController
             }
             unset($activity);
         }
+
+        ActivityVagasDisplay::enrichList($activities);
 
         $event['atividades'] = $activities;
         $event['share_url'] = AppUrl::share('evento=' . $id);

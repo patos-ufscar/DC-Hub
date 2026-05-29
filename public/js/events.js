@@ -6,6 +6,33 @@
  */
 const Events = (() => {
 
+    function isVagasEsgotadas(a, inscrito = false) {
+        if (a.vagas_esgotadas) return !inscrito;
+        return a.vagas_limite !== null && a.vagas_disponiveis !== null
+            && a.vagas_disponiveis <= 0 && !inscrito;
+    }
+
+    function vagasBadgesHtml(a, grupoId) {
+        if (App.canManageGrupo(grupoId) && a.vagas_limite !== null && a.vagas_limite !== '') {
+            return `<span class="badge bg-light text-dark ms-1">${a.vagas_ocupadas || 0}/${a.vagas_limite} inscritos</span>`;
+        }
+        return App.formatVagasPublicHtml(a);
+    }
+
+    function toggleActivityVagasDisplayOpts() {
+        const input = document.getElementById('activityVagasLimite');
+        const wrap = document.getElementById('activityVagasDisplayOpts');
+        const totalCb = document.getElementById('activityExibirVagasTotal');
+        const ocupCb = document.getElementById('activityExibirVagasOcupadas');
+        const raw = input?.value?.trim() ?? '';
+        const hasLimit = raw !== '' && Number(raw) >= 1;
+        if (wrap) wrap.classList.toggle('d-none', !hasLimit);
+        if (!hasLimit) {
+            if (totalCb) totalCb.checked = false;
+            if (ocupCb) ocupCb.checked = false;
+        }
+    }
+
     /* ─── Show Event Detail ──────────────────────────────── */
     async function showEventDetail(eventoId) {
         const id = Number(eventoId);
@@ -71,8 +98,7 @@ const Events = (() => {
         pickList.innerHTML = atividades.map(a => {
             const inscrito = !!a.usuario_inscrito;
             const presente = a.usuario_status === 'presente';
-            const esgotado = a.vagas_limite !== null && a.vagas_disponiveis !== null
-                && a.vagas_disponiveis <= 0 && !inscrito;
+            const esgotado = isVagasEsgotadas(a, inscrito);
             const disabled = inscrito || presente || esgotado;
             let statusLabel = '';
             if (presente) {
@@ -106,11 +132,8 @@ const Events = (() => {
         list.innerHTML = atividades.map(a => {
             const inscrito = !!a.usuario_inscrito;
             const presente = a.usuario_status === 'presente';
-            const vagasEsgotadas = a.vagas_limite !== null && a.vagas_disponiveis !== null
-                && a.vagas_disponiveis <= 0 && !inscrito;
-            const vagasInfo = a.vagas_limite !== null
-                ? `<span class="badge bg-light text-dark ms-1">${a.vagas_ocupadas || 0}/${a.vagas_limite} vagas</span>`
-                : '';
+            const vagasEsgotadas = isVagasEsgotadas(a, inscrito);
+            const vagasInfo = vagasBadgesHtml(a, grupoId);
             const certBadge = Number(a.oferece_certificado)
                 ? '<span class="badge bg-info text-dark ms-1">Certificado</span>'
                 : '';
@@ -347,6 +370,10 @@ const Events = (() => {
                 document.getElementById('activityHoraFim').value = a.hora_fim;
                 document.getElementById('activityLocalId').value = a.local_id;
                 document.getElementById('activityVagasLimite').value = a.vagas_limite ?? '';
+                const exibirTotal = document.getElementById('activityExibirVagasTotal');
+                const exibirOcup = document.getElementById('activityExibirVagasOcupadas');
+                if (exibirTotal) exibirTotal.checked = Number(a.exibir_vagas_total) === 1;
+                if (exibirOcup) exibirOcup.checked = Number(a.exibir_vagas_ocupadas) === 1;
                 document.getElementById('activityOfereceCert').checked = Number(a.oferece_certificado) === 1;
                 document.getElementById('activityDescCert').value = a.descricao_certificado || '';
                 toggleActivityCertFields();
@@ -359,6 +386,7 @@ const Events = (() => {
         }
 
         toggleActivityEventFields();
+        toggleActivityVagasDisplayOpts();
         App.openModal('activityFormModal');
     }
 
@@ -418,9 +446,17 @@ const Events = (() => {
                 shareInput.value = a.share_url || App.activityUrl(a.id);
             }
 
-            const vagasInfo = a.vagas_limite !== null && a.vagas_limite !== ''
-                ? `${a.vagas_ocupadas || 0}/${a.vagas_limite} vagas`
-                : 'Vagas ilimitadas';
+            let vagasLine = 'Vagas ilimitadas';
+            if (a.vagas_limite !== null && a.vagas_limite !== '') {
+                if (App.canManageGrupo(a.grupo_id)) {
+                    vagasLine = `<span class="badge bg-light text-dark me-1">${a.vagas_ocupadas || 0}/${a.vagas_limite} inscritos</span>${App.formatVagasPublicHtml(a)}`;
+                } else {
+                    const vagasBadges = App.formatVagasPublicHtml(a);
+                    vagasLine = vagasBadges
+                        ? `<span class="align-middle">${vagasBadges}</span>`
+                        : '<span class="text-muted">Vagas limitadas</span>';
+                }
+            }
             const eventBlock = document.getElementById('activityDetailEvent');
             if (eventBlock) {
                 const ev = res.event;
@@ -449,16 +485,17 @@ const Events = (() => {
                     <div><i class="bi bi-calendar3 me-1"></i>${App.formatDate(a.data)}</div>
                     <div><i class="bi bi-clock me-1"></i>${App.formatTime(a.hora_inicio)} – ${App.formatTime(a.hora_fim)}</div>
                     <div><i class="bi bi-geo-alt me-1"></i>${App.escapeHtml(a.local_nome || '')}</div>
-                    <div><i class="bi bi-people me-1"></i>${App.escapeHtml(vagasInfo)}</div>
+                    <div class="d-flex flex-wrap align-items-center gap-1"><i class="bi bi-people me-1"></i>${vagasLine}</div>
                     ${Number(a.oferece_certificado) ? '<div><span class="badge bg-info text-dark">Certificado</span></div>' : ''}`;
             }
 
             const actions = document.getElementById('activityDetailActions');
             const inscrito = !!res.user_inscrito;
             const presente = res.user_status === 'presente';
-            const esgotado = a.vagas_limite !== null && a.vagas_limite !== ''
-                && res.vagas_disponiveis !== undefined
-                && res.vagas_disponiveis <= 0 && !inscrito;
+            const esgotado = isVagasEsgotadas(
+                { ...a, vagas_disponiveis: res.vagas_disponiveis, vagas_esgotadas: a.vagas_esgotadas },
+                inscrito
+            );
 
             if (actions) {
                 if (!App.isLoggedIn()) {
@@ -606,6 +643,7 @@ const Events = (() => {
         /* Activity form submit */
         document.getElementById('activityOfereceCert')?.addEventListener('change', toggleActivityCertFields);
         document.getElementById('activityAssociadaEvento')?.addEventListener('change', toggleActivityEventFields);
+        document.getElementById('activityVagasLimite')?.addEventListener('input', toggleActivityVagasDisplayOpts);
 
         document.getElementById('activityForm')?.addEventListener('submit', async (e) => {
             e.preventDefault();
@@ -613,7 +651,14 @@ const Events = (() => {
             const data = App.formData(e.target);
             data.oferece_certificado = document.getElementById('activityOfereceCert')?.checked ? '1' : '0';
             data.associada_evento = document.getElementById('activityAssociadaEvento')?.checked ? '1' : '0';
-            if (data.vagas_limite === '') delete data.vagas_limite;
+            if (data.vagas_limite === '') {
+                delete data.vagas_limite;
+                delete data.exibir_vagas_total;
+                delete data.exibir_vagas_ocupadas;
+            } else {
+                data.exibir_vagas_total = document.getElementById('activityExibirVagasTotal')?.checked ? '1' : '0';
+                data.exibir_vagas_ocupadas = document.getElementById('activityExibirVagasOcupadas')?.checked ? '1' : '0';
+            }
             if (data.associada_evento !== '1') {
                 delete data.evento_id;
             } else {

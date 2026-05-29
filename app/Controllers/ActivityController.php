@@ -3,6 +3,7 @@ declare(strict_types=1);
 
 namespace App\Controllers;
 
+use App\Core\ActivityVagasDisplay;
 use App\Core\AppUrl;
 use App\Core\Csrf;
 use App\Core\Response;
@@ -151,6 +152,7 @@ class ActivityController
         }
 
         $activity['share_url'] = AppUrl::share('atividade=' . $id);
+        ActivityVagasDisplay::enrich($activity);
         $data = ['success' => true, 'activity' => $activity];
 
         if (!empty($activity['evento_id'])) {
@@ -198,6 +200,16 @@ class ActivityController
         $descricaoCert = trim($_POST['descricao_certificado'] ?? '');
         $vagasRaw = trim((string) ($_POST['vagas_limite'] ?? ''));
         $vagasLimite = $vagasRaw === '' ? null : (int) $vagasRaw;
+        $exibirVagasTotal = $vagasLimite !== null && in_array(
+            $_POST['exibir_vagas_total'] ?? '0',
+            ['1', 'true', 'on'],
+            true
+        );
+        $exibirVagasOcupadas = $vagasLimite !== null && in_array(
+            $_POST['exibir_vagas_ocupadas'] ?? '0',
+            ['1', 'true', 'on'],
+            true
+        );
 
         if ($titulo === '' || $data === '' || $horaInicio === '' || $horaFim === '' || $localId <= 0) {
             Response::error('Preencha título, data, horários e local.');
@@ -260,6 +272,8 @@ class ActivityController
             'oferece_certificado'   => $ofereceCert,
             'descricao_certificado' => $ofereceCert ? $descricaoCert : null,
             'vagas_limite'          => $vagasLimite,
+            'exibir_vagas_total'    => $exibirVagasTotal,
+            'exibir_vagas_ocupadas' => $exibirVagasOcupadas,
         ];
     }
 
