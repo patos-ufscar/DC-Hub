@@ -309,6 +309,7 @@ const Calendar = (() => {
                     <div class="small text-muted">
                         <i class="bi bi-geo-alt me-1"></i>${App.escapeHtml(act.local_nome || '')}
                         ${act.evento_titulo ? ` · <i class="bi bi-folder me-1"></i>${App.escapeHtml(act.evento_titulo)}` : ''}
+                        ${App.formatVagasPublicHtml(act)}
                     </div>
                     ${act.carga_minutos ? `<div class="small text-muted"><i class="bi bi-clock me-1"></i>${Math.floor(act.carga_minutos / 60)}h${act.carga_minutos % 60 ? (act.carga_minutos % 60) + 'min' : ''}</div>` : ''}
                 </div>`;

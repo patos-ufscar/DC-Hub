@@ -3,6 +3,7 @@ declare(strict_types=1);
 
 namespace App\Controllers;
 
+use App\Core\ActivityVagasDisplay;
 use App\Core\Response;
 use App\Core\Session;
 use App\Models\Activity;
@@ -51,6 +52,7 @@ class CalendarController
         }
 
         $activities = $this->activityModel->listByDateRange($adjustedStart, $adjustedEnd, $grupoId);
+        ActivityVagasDisplay::enrichList($activities);
 
         Response::json([
             'success'    => true,

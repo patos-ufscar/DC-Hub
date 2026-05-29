@@ -63,6 +63,8 @@ CREATE TABLE IF NOT EXISTS atividades (
     oferece_certificado     INTEGER NOT NULL DEFAULT 1,
     descricao_certificado   TEXT DEFAULT NULL,
     vagas_limite            INTEGER DEFAULT NULL,
+    exibir_vagas_total      INTEGER NOT NULL DEFAULT 0,
+    exibir_vagas_ocupadas   INTEGER NOT NULL DEFAULT 0,
     codigo_resgate          TEXT DEFAULT NULL,
     codigo_resgate_expira_em TEXT DEFAULT NULL,
     created_at              TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,

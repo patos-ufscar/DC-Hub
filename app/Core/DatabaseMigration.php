@@ -75,6 +75,18 @@ final class DatabaseMigration
             DatabaseDialect::isSqlite() ? 'INTEGER NOT NULL DEFAULT 1' : 'TINYINT(1) NOT NULL DEFAULT 1'
         );
         self::addColumnIfMissing($db, 'atividades', 'vagas_limite', 'INTEGER DEFAULT NULL');
+        self::addColumnIfMissing(
+            $db,
+            'atividades',
+            'exibir_vagas_total',
+            DatabaseDialect::isSqlite() ? 'INTEGER NOT NULL DEFAULT 0' : 'TINYINT(1) NOT NULL DEFAULT 0'
+        );
+        self::addColumnIfMissing(
+            $db,
+            'atividades',
+            'exibir_vagas_ocupadas',
+            DatabaseDialect::isSqlite() ? 'INTEGER NOT NULL DEFAULT 0' : 'TINYINT(1) NOT NULL DEFAULT 0'
+        );
 
         if (DatabaseDialect::isSqlite()) {
             $db->exec(

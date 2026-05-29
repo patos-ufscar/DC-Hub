@@ -204,6 +204,25 @@ const App = (() => {
         return timeStr ? timeStr.substring(0, 5) : '';
     }
 
+    /** Badges públicos de vagas (respeita flags da atividade + urgência 80%). */
+    function formatVagasPublicHtml(activity) {
+        if (!activity || activity.vagas_limite === null || activity.vagas_limite === '') {
+            return '';
+        }
+        const parts = [];
+        const texto = activity.vagas_rotulo_publico
+            || (activity.vagas_info && activity.vagas_info.texto);
+        if (texto) {
+            parts.push(`<span class="badge bg-light text-dark ms-1">${escapeHtml(texto)}</span>`);
+        }
+        const poucas = activity.vagas_poucas_restantes
+            || (activity.vagas_info && activity.vagas_info.poucas_restantes);
+        if (poucas) {
+            parts.push('<span class="badge bg-warning text-dark ms-1">Poucas vagas restantes</span>');
+        }
+        return parts.join('');
+    }
+
     function isLocalHostname(hostname) {
         return hostname === 'localhost' || hostname === '127.0.0.1' || hostname === '[::1]';
     }
@@ -353,7 +372,7 @@ const App = (() => {
         formData, showFormError, hideFormError,
         isLoggedIn, userRole, isAdmin, isProj, canManage, canManageGrupo, canAdmin,
         updateUIForAuth, cfg,
-        MESES, DIAS_SEMANA, formatDate, formatTime,
+        MESES, DIAS_SEMANA, formatDate, formatTime, formatVagasPublicHtml,
         activityUrl, eventUrl, setActivityUrl, setEventUrl, buildHomeUrl, copyToClipboard
     };
 })();

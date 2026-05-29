@@ -19,10 +19,11 @@ class Activity
         $stmt = $this->db->prepare(
             'INSERT INTO atividades (
                 evento_id, grupo_id, titulo, descricao, data, hora_inicio, hora_fim, local_id,
-                oferece_certificado, descricao_certificado, vagas_limite
+                oferece_certificado, descricao_certificado, vagas_limite,
+                exibir_vagas_total, exibir_vagas_ocupadas
              ) VALUES (
                 :eid, :gid, :titulo, :descricao, :data, :hi, :hf, :lid,
-                :cert, :dc, :vagas
+                :cert, :dc, :vagas, :exibir_total, :exibir_ocupadas
              )'
         );
         $this->bindActivityData($stmt, $data, true);
@@ -66,7 +67,9 @@ class Activity
                 local_id = :lid,
                 oferece_certificado = :cert,
                 descricao_certificado = :dc,
-                vagas_limite = :vagas
+                vagas_limite = :vagas,
+                exibir_vagas_total = :exibir_total,
+                exibir_vagas_ocupadas = :exibir_ocupadas
              WHERE id = :id'
         );
         $this->bindActivityData($stmt, $data, true);
@@ -251,5 +254,7 @@ class Activity
         } else {
             $stmt->bindValue(':vagas', (int) $data['vagas_limite'], PDO::PARAM_INT);
         }
+        $stmt->bindValue(':exibir_total', !empty($data['exibir_vagas_total']) ? 1 : 0, PDO::PARAM_INT);
+        $stmt->bindValue(':exibir_ocupadas', !empty($data['exibir_vagas_ocupadas']) ? 1 : 0, PDO::PARAM_INT);
     }
 }
