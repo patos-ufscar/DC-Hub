@@ -148,6 +148,7 @@ A página principal é servida sem `action` (SPA leve com modais em JavaScript).
 ## CI/CD e produção
 
 - **CI:** em cada PR para `main`, sintaxe PHP (`.github/workflows/ci.yml`)
+- **Segurança:** Gitleaks (secrets) + Semgrep PHP/OWASP (`.github/workflows/security.yml`)
 - **Segurança IA:** ChatGPT avalia o diff do PR — nota mínima **7**/10 (secret `OPENAI_API_KEY`; ver [`docs/AI-SECURITY-REVIEW.md`](docs/AI-SECURITY-REVIEW.md))
 - **Deploy:** após merge na `main`, deploy automático via SSH/rsync (`.github/workflows/deploy.yml`)
 - **Main protegida:** use PRs; configure com [`docs/DEPLOY.md`](docs/DEPLOY.md) ou `scripts/github/setup-branch-protection.sh`
