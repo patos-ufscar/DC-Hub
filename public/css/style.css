@@ -1442,10 +1442,89 @@ button,
     border-radius: 8px;
 }
 
+/* --- PATOS credit --- */
+.dc-patos-credit {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: .5rem;
+    flex-wrap: wrap;
+}
+
+.dc-patos-credit-text {
+    font-family: var(--font-accent);
+    font-size: .8rem;
+    font-weight: 600;
+    color: var(--ciano-escuro);
+    letter-spacing: .02em;
+}
+
+.dc-patos-credit-logo {
+    height: 28px;
+    width: auto;
+    object-fit: contain;
+    display: block;
+}
+
+.dc-patos-credit--page {
+    display: none;
+}
+
+.dc-patos-credit--modal {
+    margin-top: 1.25rem;
+    padding-top: 1rem;
+    border-top: 1px solid rgba(148, 210, 189, .3);
+}
+
+/* Desktop: crédito PATOS no canto inferior direito */
+@media (min-width: 768px) {
+    .dc-patos-credit--page {
+        display: flex;
+        position: fixed;
+        right: 1.25rem;
+        bottom: 1rem;
+        left: auto;
+        z-index: 15;
+        padding: 0;
+        margin: 0;
+        pointer-events: none;
+        justify-content: flex-end;
+        gap: .45rem;
+    }
+
+    .dc-patos-credit--page .dc-patos-credit-text {
+        display: none;
+    }
+
+    .dc-patos-credit--page .dc-patos-credit-logo {
+        height: 30px;
+        pointer-events: auto;
+    }
+
+    .calendar-container {
+        display: flex;
+        flex-direction: column;
+        min-height: calc(100vh - var(--topbar-height) - var(--topbar-v-offset) * 2 - 52px);
+        margin-bottom: 2rem;
+    }
+
+    .calendar-container .calendar-grid {
+        flex: 1;
+        min-height: 0;
+        grid-auto-rows: minmax(72px, 1fr);
+    }
+
+    .calendar-container:has(.week-view),
+    .calendar-container:has(.day-view) {
+        min-height: calc(100vh - var(--topbar-height) - var(--topbar-v-offset) * 2 - 52px);
+    }
+}
+
 /* Print styles */
 @media print {
     .dc-topbar,
     .floating-buttons,
-    .modal-backdrop { display: none !important; }
+    .modal-backdrop,
+    .dc-patos-credit { display: none !important; }
     body { padding-top: 0 !important; }
 }

@@ -32,6 +32,7 @@
                 <div class="text-center mt-3">
                     <small>Já tem conta? <a href="#" id="switchToLogin" class="text-decoration-none" style="color: var(--verde-agua-escuro);">Entrar</a></small>
                 </div>
+                <?php $patosCreditVariant = 'modal'; include __DIR__ . '/../partials/patos-credit.php'; ?>
             </div>
         </div>
     </div>

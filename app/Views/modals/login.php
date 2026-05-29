@@ -22,6 +22,7 @@
                 <div class="text-center mt-3">
                     <small>Não tem conta? <a href="#" id="switchToRegister" class="text-decoration-none" style="color: var(--verde-agua-escuro);">Cadastre-se</a></small>
                 </div>
+                <?php $patosCreditVariant = 'modal'; include __DIR__ . '/../partials/patos-credit.php'; ?>
             </div>
         </div>
     </div>
