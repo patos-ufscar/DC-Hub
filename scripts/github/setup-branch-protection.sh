@@ -20,7 +20,7 @@ gh api "repos/${REPO}/branches/main/protection" \
 {
   "required_status_checks": {
     "strict": true,
-    "contexts": ["php-syntax"]
+    "checks": [{"context": "PHP syntax check"}]
   },
   "enforce_admins": true,
   "required_pull_request_reviews": {
