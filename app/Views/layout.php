@@ -10,11 +10,18 @@ $csrfToken = Csrf::generateToken();
 $pageTitle = 'DC Hub — Calendário do Departamento de Computação';
 $pageDescription = 'Calendário de eventos e atividades do Departamento de Computação (UFSCar). '
     . 'Inscrições, presença por QR Code e certificados. Desenvolvido por PATOS.';
-$pageUrl = rtrim(AppUrl::base(), '/');
+$publicUrl = rtrim(AppUrl::base(), '/');
+$pageUrl = $publicUrl;
 $ogImage = $pageUrl . '/assets/images/og-image.png';
+
+/** @param string $relativePath caminho relativo a public/ (ex.: js/app.js) */
+$assetVersion = static function (string $relativePath): string {
+    $full = dirname(__DIR__, 2) . '/public/' . ltrim($relativePath, '/');
+    return is_file($full) ? (string) filemtime($full) : '0';
+};
 ?>
 <!DOCTYPE html>
-<html lang="pt-BR">
+<html lang="pt-BR" data-public-url="<?= htmlspecialchars($publicUrl, ENT_QUOTES, 'UTF-8') ?>">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
@@ -55,7 +62,7 @@ $ogImage = $pageUrl . '/assets/images/og-image.png';
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Oxanium:wght@400;600;700&family=Roboto:wght@400;700;900&display=swap" rel="stylesheet">
     <!-- Custom CSS -->
-    <link href="css/style.css" rel="stylesheet">
+    <link href="css/style.css?v=<?= $assetVersion('css/style.css') ?>" rel="stylesheet">
 </head>
 <body>
 
@@ -64,7 +71,7 @@ $ogImage = $pageUrl . '/assets/images/og-image.png';
             csrfToken: <?= json_encode($csrfToken) ?>,
             user: <?= json_encode($user) ?>,
             baseUrl: <?= json_encode(rtrim(dirname($_SERVER['SCRIPT_NAME']), '/')) ?>,
-            publicUrl: <?= json_encode(AppUrl::base()) ?>
+            publicUrl: <?= json_encode($publicUrl) ?>
         };
     </script>
 
@@ -110,19 +117,19 @@ $ogImage = $pageUrl . '/assets/images/og-image.png';
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"
             integrity="sha384-YvpcrYf0tY3lHB60NNkmXc5s9fDVZLESaAA55NDzOxhy9GkcIdslK1eN7N6jIeHz"
             crossorigin="anonymous"></script>
-    <script src="js/vendor/qrcode.min.js"></script>
+    <script src="js/vendor/qrcode.min.js?v=<?= $assetVersion('js/vendor/qrcode.min.js') ?>"></script>
     <script src="https://unpkg.com/html5-qrcode@2.3.8/html5-qrcode.min.js"
             integrity="sha384-c9d8RFSL+u3exBOJ4Yp3HUJXS4znl9f+z66d1y54ig+ea249SpqR+w1wyvXz/lk+"
             crossorigin="anonymous"></script>
     <!-- App JS -->
-    <script src="js/app.js"></script>
-    <script src="js/calendar.js"></script>
-    <script src="js/auth.js"></script>
-    <script src="js/presence.js"></script>
-    <script src="js/events.js"></script>
-    <script src="js/events-manage.js"></script>
-    <script src="js/activities-manage.js"></script>
-    <script src="js/admin.js"></script>
-    <script src="js/certificate.js"></script>
+    <script src="js/app.js?v=<?= $assetVersion('js/app.js') ?>"></script>
+    <script src="js/calendar.js?v=<?= $assetVersion('js/calendar.js') ?>"></script>
+    <script src="js/auth.js?v=<?= $assetVersion('js/auth.js') ?>"></script>
+    <script src="js/presence.js?v=<?= $assetVersion('js/presence.js') ?>"></script>
+    <script src="js/events.js?v=<?= $assetVersion('js/events.js') ?>"></script>
+    <script src="js/events-manage.js?v=<?= $assetVersion('js/events-manage.js') ?>"></script>
+    <script src="js/activities-manage.js?v=<?= $assetVersion('js/activities-manage.js') ?>"></script>
+    <script src="js/admin.js?v=<?= $assetVersion('js/admin.js') ?>"></script>
+    <script src="js/certificate.js?v=<?= $assetVersion('js/certificate.js') ?>"></script>
 </body>
 </html>
