@@ -40,7 +40,6 @@ final class EnvLoader
             }
 
             $_ENV[$key] = $value;
-            putenv("{$key}={$value}");
         }
     }
 }

@@ -64,6 +64,7 @@ CREATE TABLE IF NOT EXISTS atividades (
     descricao_certificado   TEXT DEFAULT NULL,
     vagas_limite            INTEGER DEFAULT NULL,
     codigo_resgate          TEXT DEFAULT NULL,
+    codigo_resgate_expira_em TEXT DEFAULT NULL,
     created_at              TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
     FOREIGN KEY (evento_id) REFERENCES eventos(id) ON DELETE SET NULL ON UPDATE CASCADE,
     FOREIGN KEY (grupo_id) REFERENCES grupos(id) ON DELETE CASCADE ON UPDATE CASCADE,

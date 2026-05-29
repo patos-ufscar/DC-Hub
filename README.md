@@ -117,9 +117,9 @@ php -S localhost:8080
 
 Acesse: [http://localhost:8080](http://localhost:8080)
 
-### 4. Perfis de teste
+### 4. Administrador inicial (desenvolvimento)
 
-Após o seed (se usado), consulte `database/seeds.sqlite.sql` para usuários de exemplo. Caso contrário, cadastre-se pela interface e promova perfis pelo painel admin ou diretamente no banco.
+Em ambiente de desenvolvimento, após `php scripts/init-db.php`, um usuário admin é criado com **senha aleatória** exibida apenas no terminal (não há credencial padrão no repositório). Em produção, defina `APP_ENV=production` e `APP_URL` no `.env`.
 
 ---
 

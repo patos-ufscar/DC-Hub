@@ -98,6 +98,7 @@ CREATE TABLE IF NOT EXISTS atividades (
     descricao_certificado   TEXT DEFAULT NULL,
     vagas_limite            INT UNSIGNED DEFAULT NULL,
     codigo_resgate          VARCHAR(20) DEFAULT NULL,
+    codigo_resgate_expira_em DATETIME DEFAULT NULL,
     created_at              TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
     CONSTRAINT fk_atividades_evento
         FOREIGN KEY (evento_id) REFERENCES eventos(id)

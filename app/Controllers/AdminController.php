@@ -299,6 +299,10 @@ class AdminController
 
     public function listActiveGroups(): void
     {
+        if (!Session::isLoggedIn()) {
+            Response::error('Não autenticado.', 401);
+        }
+
         $role = Session::get('user_role');
         $grupoId = (int) Session::get('user_grupo_id');
 

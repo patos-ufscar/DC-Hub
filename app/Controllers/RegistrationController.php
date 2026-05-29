@@ -4,6 +4,7 @@ declare(strict_types=1);
 namespace App\Controllers;
 
 use App\Core\Csrf;
+use App\Core\RateLimiter;
 use App\Core\Response;
 use App\Core\Session;
 use App\Models\Registration;
@@ -15,11 +16,13 @@ class RegistrationController
 {
     private Registration $regModel;
     private Activity $activityModel;
+    private RateLimiter $rateLimiter;
 
     public function __construct(private PDO $db)
     {
         $this->regModel      = new Registration($db);
         $this->activityModel = new Activity($db);
+        $this->rateLimiter   = new RateLimiter($db);
     }
 
     public function toggleRsvp(): void
@@ -117,8 +120,13 @@ class RegistrationController
             }
         }
 
-        // Validate that the user IDs are integers
         $userIds = array_map('intval', (array) $userIds);
+
+        foreach ($userIds as $uid) {
+            if ($this->regModel->getUserStatus($uid, $atividadeId) !== 'rsvp') {
+                Response::error('Só é possível confirmar presença de participantes inscritos (RSVP).');
+            }
+        }
 
         $count = $this->regModel->bulkConfirmPresence(
             $atividadeId,
@@ -279,11 +287,18 @@ class RegistrationController
         }
 
         $userId = (int) Session::get('user_id');
+        $bucket = RateLimiter::bucket('redeem', RateLimiter::clientIp(), (string) $userId);
+        if (!$this->rateLimiter->attempt($bucket, 10, 600)) {
+            Response::error('Muitas tentativas. Aguarde alguns minutos.', 429);
+        }
+
         $result = $this->regModel->confirmByCode($userId, $code);
 
         if ($result === null) {
-            Response::error('Código inválido.');
+            Response::error('Código inválido ou expirado.');
         }
+
+        $this->rateLimiter->clear($bucket);
 
         Response::success('Presença confirmada com sucesso!');
     }

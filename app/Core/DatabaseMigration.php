@@ -27,6 +27,7 @@ final class DatabaseMigration
         self::migratePresence($db);
         self::migrateActivityOptions($db);
         self::migrateActivityStandalone($db);
+        self::migrateRedemptionCodeExpiry($db);
     }
 
     private static function migrateMysql(PDO $db): void
@@ -43,6 +44,21 @@ final class DatabaseMigration
         self::migratePresence($db);
         self::migrateActivityOptions($db);
         self::migrateActivityStandalone($db);
+        self::migrateRedemptionCodeExpiry($db);
+    }
+
+    private static function migrateRedemptionCodeExpiry(PDO $db): void
+    {
+        if (!self::tableExists($db, 'atividades')) {
+            return;
+        }
+
+        self::addColumnIfMissing(
+            $db,
+            'atividades',
+            'codigo_resgate_expira_em',
+            DatabaseDialect::isSqlite() ? 'TEXT DEFAULT NULL' : 'DATETIME DEFAULT NULL'
+        );
     }
 
     private static function migrateActivityOptions(PDO $db): void

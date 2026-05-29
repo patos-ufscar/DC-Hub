@@ -12,40 +12,72 @@ class Registration
 
     public function toggleRsvp(int $userId, int $atividadeId): string
     {
-        // Check if registration exists
-        $stmt = $this->db->prepare(
-            'SELECT id, status FROM inscricoes WHERE user_id = :uid AND atividade_id = :aid'
-        );
-        $stmt->bindValue(':uid', $userId, PDO::PARAM_INT);
-        $stmt->bindValue(':aid', $atividadeId, PDO::PARAM_INT);
-        $stmt->execute();
-        $existing = $stmt->fetch();
-
-        if ($existing) {
-            // If already has confirmed presence, can't toggle
-            if ($existing['status'] === 'presente') {
-                return 'presente';
+        try {
+            if (\App\Core\DatabaseDialect::isSqlite()) {
+                $this->db->exec('BEGIN IMMEDIATE');
+            } else {
+                $this->db->beginTransaction();
             }
-            // Remove RSVP
-            $del = $this->db->prepare('DELETE FROM inscricoes WHERE id = :id');
-            $del->bindValue(':id', (int) $existing['id'], PDO::PARAM_INT);
-            $del->execute();
-            return 'removed';
+
+            $stmt = $this->db->prepare(
+                'SELECT id, status FROM inscricoes WHERE user_id = :uid AND atividade_id = :aid'
+            );
+            $stmt->bindValue(':uid', $userId, PDO::PARAM_INT);
+            $stmt->bindValue(':aid', $atividadeId, PDO::PARAM_INT);
+            $stmt->execute();
+            $existing = $stmt->fetch();
+
+            if ($existing) {
+                if ($existing['status'] === 'presente') {
+                    $this->db->commit();
+                    return 'presente';
+                }
+
+                $del = $this->db->prepare('DELETE FROM inscricoes WHERE id = :id');
+                $del->bindValue(':id', (int) $existing['id'], PDO::PARAM_INT);
+                $del->execute();
+                $this->db->commit();
+
+                return 'removed';
+            }
+
+            $limitStmt = $this->db->prepare(
+                'SELECT vagas_limite FROM atividades WHERE id = :aid'
+            );
+            $limitStmt->bindValue(':aid', $atividadeId, PDO::PARAM_INT);
+            $limitStmt->execute();
+            $limitRow = $limitStmt->fetch();
+
+            if (!$limitRow) {
+                $this->db->rollBack();
+                return 'full';
+            }
+
+            if ($limitRow['vagas_limite'] !== null) {
+                $limit = (int) $limitRow['vagas_limite'];
+                $occupied = $this->countOccupiedSpots($atividadeId);
+                if ($occupied >= $limit) {
+                    $this->db->commit();
+                    return 'full';
+                }
+            }
+
+            $ins = $this->db->prepare(
+                "INSERT INTO inscricoes (user_id, atividade_id, status) VALUES (:uid, :aid, 'rsvp')"
+            );
+            $ins->bindValue(':uid', $userId, PDO::PARAM_INT);
+            $ins->bindValue(':aid', $atividadeId, PDO::PARAM_INT);
+            $ins->execute();
+
+            $this->db->commit();
+
+            return 'rsvp';
+        } catch (\Throwable $e) {
+            if ($this->db->inTransaction()) {
+                $this->db->rollBack();
+            }
+            throw $e;
         }
-
-        if (!$this->hasAvailableSpot($atividadeId)) {
-            return 'full';
-        }
-
-        // Create RSVP
-        $ins = $this->db->prepare(
-            "INSERT INTO inscricoes (user_id, atividade_id, status) VALUES (:uid, :aid, 'rsvp')"
-        );
-        $ins->bindValue(':uid', $userId, PDO::PARAM_INT);
-        $ins->bindValue(':aid', $atividadeId, PDO::PARAM_INT);
-        $ins->execute();
-
-        return 'rsvp';
     }
 
     public function hasAvailableSpot(int $atividadeId): bool
@@ -137,80 +169,21 @@ class Registration
         return $stmt->fetchAll();
     }
 
-    /**
-     * @return array{already: bool, user_id: int, nome_exibicao: string, status: string}
-     */
-    public function markPresent(int $userId, int $atividadeId, int $validatedBy, string $method): array
-    {
-        $userStmt = $this->db->prepare(
-            'SELECT id, nome_exibicao FROM usuarios WHERE id = :id'
-        );
-        $userStmt->bindValue(':id', $userId, PDO::PARAM_INT);
-        $userStmt->execute();
-        $user = $userStmt->fetch();
-        if (!$user) {
-            throw new \InvalidArgumentException('Usuário não encontrado.');
-        }
-
-        $check = $this->db->prepare(
-            'SELECT id, status FROM inscricoes WHERE user_id = :uid AND atividade_id = :aid'
-        );
-        $check->bindValue(':uid', $userId, PDO::PARAM_INT);
-        $check->bindValue(':aid', $atividadeId, PDO::PARAM_INT);
-        $check->execute();
-        $existing = $check->fetch();
-
-        if ($existing && $existing['status'] === 'presente') {
-            return [
-                'already'       => true,
-                'user_id'       => $userId,
-                'nome_exibicao' => $user['nome_exibicao'],
-                'status'        => 'presente',
-            ];
-        }
-
-        if ($existing) {
-            $stmt = $this->db->prepare(
-                "UPDATE inscricoes
-                 SET status = 'presente', validado_em = CURRENT_TIMESTAMP,
-                     validado_por = :validador, metodo_validacao = :metodo
-                 WHERE id = :id"
-            );
-            $stmt->bindValue(':validador', $validatedBy, PDO::PARAM_INT);
-            $stmt->bindValue(':metodo', $method);
-            $stmt->bindValue(':id', (int) $existing['id'], PDO::PARAM_INT);
-            $stmt->execute();
-        } else {
-            $stmt = $this->db->prepare(
-                "INSERT INTO inscricoes (user_id, atividade_id, status, validado_em, validado_por, metodo_validacao)
-                 VALUES (:uid, :aid, 'presente', CURRENT_TIMESTAMP, :validador, :metodo)"
-            );
-            $stmt->bindValue(':uid', $userId, PDO::PARAM_INT);
-            $stmt->bindValue(':aid', $atividadeId, PDO::PARAM_INT);
-            $stmt->bindValue(':validador', $validatedBy, PDO::PARAM_INT);
-            $stmt->bindValue(':metodo', $method);
-            $stmt->execute();
-        }
-
-        return [
-            'already'       => false,
-            'user_id'       => $userId,
-            'nome_exibicao' => $user['nome_exibicao'],
-            'status'        => 'presente',
-        ];
-    }
-
     public function confirmByCode(int $userId, string $code): ?array
     {
-        // Find activity by code
         $stmt = $this->db->prepare(
-            'SELECT id FROM atividades WHERE codigo_resgate = :code'
+            'SELECT id, codigo_resgate_expira_em FROM atividades WHERE codigo_resgate = :code'
         );
         $stmt->bindValue(':code', $code);
         $stmt->execute();
         $activity = $stmt->fetch();
 
         if (!$activity) {
+            return null;
+        }
+
+        $expires = $activity['codigo_resgate_expira_em'] ?? null;
+        if ($expires !== null && $expires !== '' && strtotime((string) $expires) < time()) {
             return null;
         }
 
@@ -330,12 +303,89 @@ class Registration
         $count = 0;
 
         foreach ($userIds as $uid) {
-            $result = $this->markPresent((int) $uid, $atividadeId, $validatedBy, 'manual');
+            $uid = (int) $uid;
+            if ($this->getUserStatus($uid, $atividadeId) !== 'rsvp') {
+                continue;
+            }
+
+            $result = $this->markPresent($uid, $atividadeId, $validatedBy, 'manual', true);
             if (!$result['already']) {
                 $count++;
             }
         }
 
         return $count;
+    }
+
+    /**
+     * @return array{already: bool, user_id: int, nome_exibicao: string, status: string}
+     */
+    public function markPresent(
+        int $userId,
+        int $atividadeId,
+        int $validatedBy,
+        string $method,
+        bool $requireRsvp = false
+    ): array {
+        $userStmt = $this->db->prepare(
+            'SELECT id, nome_exibicao FROM usuarios WHERE id = :id'
+        );
+        $userStmt->bindValue(':id', $userId, PDO::PARAM_INT);
+        $userStmt->execute();
+        $user = $userStmt->fetch();
+        if (!$user) {
+            throw new \InvalidArgumentException('Usuário não encontrado.');
+        }
+
+        $check = $this->db->prepare(
+            'SELECT id, status FROM inscricoes WHERE user_id = :uid AND atividade_id = :aid'
+        );
+        $check->bindValue(':uid', $userId, PDO::PARAM_INT);
+        $check->bindValue(':aid', $atividadeId, PDO::PARAM_INT);
+        $check->execute();
+        $existing = $check->fetch();
+
+        if ($requireRsvp && (!$existing || $existing['status'] !== 'rsvp')) {
+            throw new \InvalidArgumentException('Participante sem inscrição (RSVP) nesta atividade.');
+        }
+
+        if ($existing && $existing['status'] === 'presente') {
+            return [
+                'already'       => true,
+                'user_id'       => $userId,
+                'nome_exibicao' => $user['nome_exibicao'],
+                'status'        => 'presente',
+            ];
+        }
+
+        if ($existing) {
+            $stmt = $this->db->prepare(
+                "UPDATE inscricoes
+                 SET status = 'presente', validado_em = CURRENT_TIMESTAMP,
+                     validado_por = :validador, metodo_validacao = :metodo
+                 WHERE id = :id"
+            );
+            $stmt->bindValue(':validador', $validatedBy, PDO::PARAM_INT);
+            $stmt->bindValue(':metodo', $method);
+            $stmt->bindValue(':id', (int) $existing['id'], PDO::PARAM_INT);
+            $stmt->execute();
+        } else {
+            $stmt = $this->db->prepare(
+                "INSERT INTO inscricoes (user_id, atividade_id, status, validado_em, validado_por, metodo_validacao)
+                 VALUES (:uid, :aid, 'presente', CURRENT_TIMESTAMP, :validador, :metodo)"
+            );
+            $stmt->bindValue(':uid', $userId, PDO::PARAM_INT);
+            $stmt->bindValue(':aid', $atividadeId, PDO::PARAM_INT);
+            $stmt->bindValue(':validador', $validatedBy, PDO::PARAM_INT);
+            $stmt->bindValue(':metodo', $method);
+            $stmt->execute();
+        }
+
+        return [
+            'already'       => false,
+            'user_id'       => $userId,
+            'nome_exibicao' => $user['nome_exibicao'],
+            'status'        => 'presente',
+        ];
     }
 }

@@ -181,12 +181,14 @@ class Activity
         return $stmt->fetchAll();
     }
 
-    public function setRedemptionCode(int $id, string $code): bool
+    public function setRedemptionCode(int $id, string $code, int $validHours = 2): bool
     {
+        $expiresAt = date('Y-m-d H:i:s', time() + max(1, $validHours) * 3600);
         $stmt = $this->db->prepare(
-            'UPDATE atividades SET codigo_resgate = :code WHERE id = :id'
+            'UPDATE atividades SET codigo_resgate = :code, codigo_resgate_expira_em = :exp WHERE id = :id'
         );
         $stmt->bindValue(':code', $code);
+        $stmt->bindValue(':exp', $expiresAt);
         $stmt->bindValue(':id', $id, PDO::PARAM_INT);
 
         return $stmt->execute();

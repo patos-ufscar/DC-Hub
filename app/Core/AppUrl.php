@@ -9,9 +9,16 @@ final class AppUrl
     public static function base(): string
     {
         $configured = trim($_ENV['APP_URL'] ?? '');
+        $isProduction = ($_ENV['APP_ENV'] ?? 'production') === 'production';
 
         if ($configured !== '') {
             return rtrim($configured, '/');
+        }
+
+        if ($isProduction) {
+            throw new \RuntimeException(
+                'APP_URL deve estar definido em produção (ex.: https://dchub.seudominio.br).'
+            );
         }
 
         return self::detectFromRequest();

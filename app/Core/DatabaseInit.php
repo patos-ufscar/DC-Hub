@@ -33,7 +33,8 @@ final class DatabaseInit
 
         self::runSqlFile($pdo, $schemaFile);
 
-        if (is_file($seedsFile)) {
+        $env = strtolower($_ENV['APP_ENV'] ?? getenv('APP_ENV') ?: 'production');
+        if ($env === 'development' && is_file($seedsFile)) {
             self::runSqlFile($pdo, $seedsFile);
         }
     }

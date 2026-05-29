@@ -4,6 +4,7 @@ declare(strict_types=1);
 namespace App\Controllers;
 
 use App\Core\Csrf;
+use App\Core\RateLimiter;
 use App\Core\Response;
 use App\Core\Session;
 use App\Models\User;
@@ -12,10 +13,12 @@ use PDO;
 class AuthController
 {
     private User $userModel;
+    private RateLimiter $rateLimiter;
 
     public function __construct(private PDO $db)
     {
         $this->userModel = new User($db);
+        $this->rateLimiter = new RateLimiter($db);
     }
 
     public function login(): void
@@ -31,11 +34,18 @@ class AuthController
             Response::error('Preencha todos os campos.');
         }
 
+        $bucket = RateLimiter::bucket('login', RateLimiter::clientIp(), strtolower($email));
+        if (!$this->rateLimiter->attempt($bucket, 5, 900)) {
+            Response::error('Muitas tentativas. Aguarde 15 minutos e tente novamente.', 429);
+        }
+
         $user = $this->userModel->findByEmail($email);
 
         if (!$user || !password_verify($senha, $user['senha'])) {
             Response::error('Email ou senha incorretos.');
         }
+
+        $this->rateLimiter->clear($bucket);
 
         $this->userModel->ensurePresencaUuid((int) $user['id']);
         $user = $this->userModel->findById((int) $user['id']);
@@ -76,8 +86,9 @@ class AuthController
             Response::error('Email inválido.');
         }
 
-        if (strlen($senha) < 8) {
-            Response::error('A senha deve ter pelo menos 8 caracteres.');
+        $passwordError = $this->validatePassword($senha);
+        if ($passwordError !== null) {
+            Response::error($passwordError);
         }
 
         if ($senha !== $senhaConfirm) {
@@ -85,7 +96,7 @@ class AuthController
         }
 
         if ($this->userModel->emailExists($email)) {
-            Response::error('Este email já está cadastrado.');
+            Response::error('Não foi possível concluir o cadastro. Verifique os dados informados.');
         }
 
         $id = $this->userModel->create($email, $senha, $nomeExibicao);
@@ -110,6 +121,10 @@ class AuthController
 
     public function logout(): void
     {
+        if (!Csrf::validateRequest()) {
+            Response::error('Token CSRF inválido.', 403);
+        }
+
         Session::destroy();
         Response::success('Logout realizado.');
     }
@@ -146,5 +161,18 @@ class AuthController
         Response::success('Perfil atualizado.', [
             'user' => Session::getUser(),
         ]);
+    }
+
+    private function validatePassword(string $senha): ?string
+    {
+        if (strlen($senha) < 8) {
+            return 'A senha deve ter pelo menos 8 caracteres.';
+        }
+
+        if (!preg_match('/[A-Za-z]/', $senha) || !preg_match('/\d/', $senha)) {
+            return 'A senha deve conter letras e números.';
+        }
+
+        return null;
     }
 }

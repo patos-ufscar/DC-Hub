@@ -83,7 +83,9 @@ class ExportController
 
     private function escapeIcs(string $text): string
     {
+        $text = str_replace(["\r\n", "\r"], "\n", $text);
         $text = str_replace(['\\', ';', ',', "\n"], ['\\\\', '\\;', '\\,', '\\n'], $text);
+
         return $text;
     }
 }
