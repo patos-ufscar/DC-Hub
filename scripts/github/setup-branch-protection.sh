@@ -23,7 +23,8 @@ gh api "repos/${REPO}/branches/main/protection" \
     "checks": [
       {"context": "PHP syntax check"},
       {"context": "Gitleaks"},
-      {"context": "Semgrep"}
+      {"context": "Semgrep"},
+      {"context": "AI security review"}
     ]
   },
   "enforce_admins": true,
