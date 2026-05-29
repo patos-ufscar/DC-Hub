@@ -86,10 +86,10 @@ jobs:
           fi
           WEB_USER="${WEB_USER:-www-data}"
           if id "${WEB_USER}" >/dev/null 2>&1; then
-            chown -R "${SSH_USER}:${WEB_USER}" database backups
-            chmod -R 775 database backups
+            sudo chown -R "${SSH_USER}:${WEB_USER}" database backups
+            sudo chmod -R 775 database backups
             if compgen -G "database/*.sqlite" >/dev/null; then
-              chown "${WEB_USER}:${WEB_USER}" database/*.sqlite
+              sudo chown "${WEB_USER}:${WEB_USER}" database/*.sqlite
             fi
           fi
           echo "Deploy concluído em \$(date -Iseconds)"
