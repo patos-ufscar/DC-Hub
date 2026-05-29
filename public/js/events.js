@@ -30,7 +30,7 @@ const Events = (() => {
 
         const shareInput = document.getElementById('eventShareUrl');
         if (shareInput) {
-            shareInput.value = App.eventUrl(id);
+            shareInput.value = ev.share_url || App.eventUrl(id);
         }
 
         const atividades = ev.atividades || [];
@@ -415,7 +415,7 @@ const Events = (() => {
 
             const shareInput = document.getElementById('activityShareUrl');
             if (shareInput) {
-                shareInput.value = App.activityUrl(a.id);
+                shareInput.value = a.share_url || App.activityUrl(a.id);
             }
 
             const vagasInfo = a.vagas_limite !== null && a.vagas_limite !== ''

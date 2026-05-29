@@ -29,6 +29,7 @@ final class EnvLoader
             }
 
             $key = trim(substr($line, 0, $pos));
+            $key = preg_replace('/^\xEF\xBB\xBF/', '', $key) ?? $key;
             $value = trim(substr($line, $pos + 1));
 
             // Remove surrounding quotes
@@ -40,6 +41,7 @@ final class EnvLoader
             }
 
             $_ENV[$key] = $value;
+            putenv($key . '=' . $value);
         }
     }
 }

@@ -204,16 +204,28 @@ const App = (() => {
         return timeStr ? timeStr.substring(0, 5) : '';
     }
 
+    function isLocalHostname(hostname) {
+        return hostname === 'localhost' || hostname === '127.0.0.1' || hostname === '[::1]';
+    }
+
     /** Base absoluta para links compartilháveis (APP_URL no servidor). */
     function publicBaseUrl() {
-        const configured = (cfg.publicUrl || '').trim().replace(/\/$/, '');
+        let configured = (cfg.publicUrl || '').trim().replace(/\/$/, '');
+        if (configured) {
+            try {
+                const parsed = new URL(configured);
+                const pageHost = window.location.hostname;
+                if (isLocalHostname(parsed.hostname) && pageHost && !isLocalHostname(pageHost)) {
+                    configured = '';
+                }
+            } catch {
+                configured = '';
+            }
+        }
         if (configured) {
             return configured;
         }
-        const base = (cfg.baseUrl || '.').replace(/\/$/, '');
-        const path = base === '.' ? window.location.pathname.replace(/\/[^/]*$/, '') || '' : base;
-        const root = path.endsWith('/') ? path.slice(0, -1) : path;
-        return `${window.location.origin}${root || ''}`;
+        return browserBaseUrl();
     }
 
     /** URL absoluta da atividade (copiar / compartilhar). */
