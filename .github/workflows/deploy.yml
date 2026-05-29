@@ -85,9 +85,8 @@ jobs:
             exit 1
           fi
           WEB_USER="${WEB_USER:-www-data}"
-          DEPLOY_USER="${USER:-ubuntu}"
           if id "${WEB_USER}" >/dev/null 2>&1; then
-            chown -R "${DEPLOY_USER}:${WEB_USER}" database backups
+            chown -R "${SSH_USER}:${WEB_USER}" database backups
             chmod -R 775 database backups
             if compgen -G "database/*.sqlite" >/dev/null; then
               chown "${WEB_USER}:${WEB_USER}" database/*.sqlite
