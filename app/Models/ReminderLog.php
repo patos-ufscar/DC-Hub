@@ -9,6 +9,21 @@ class ReminderLog
 {
     public function __construct(private PDO $db) {}
 
+    /** Já recebeu qualquer lembrete para esta inscrição (no máximo um por atividade). */
+    public function wasReminded(int $userId, int $atividadeId): bool
+    {
+        $stmt = $this->db->prepare(
+            'SELECT 1 FROM lembretes_enviados
+             WHERE user_id = :uid AND atividade_id = :aid
+             LIMIT 1'
+        );
+        $stmt->bindValue(':uid', $userId, PDO::PARAM_INT);
+        $stmt->bindValue(':aid', $atividadeId, PDO::PARAM_INT);
+        $stmt->execute();
+
+        return (bool) $stmt->fetchColumn();
+    }
+
     public function wasSent(int $userId, int $atividadeId, string $tipo): bool
     {
         $stmt = $this->db->prepare(

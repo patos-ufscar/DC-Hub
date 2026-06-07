@@ -51,8 +51,8 @@ O **DC Hub** é uma aplicação web desenvolvida para centralizar a comunicaçã
 
 ### RF06 - Lembretes Automáticos
 * **RF06.1:** O sistema deve enviar um email automático de lembrete para usuários que realizaram RSVP.
-* **RF06.2:** O envio deve ocorrer em janelas pré-definidas (ex: 24 horas e/ou 1 hora antes do início da atividade).
-* **RF06.3:** Às 8h do dia da atividade, enviar um e-mail resumo com todas as atividades inscritas daquele dia (sem reenvio duplicado).
+* **RF06.2:** Cada inscrição (`rsvp`) recebe **no máximo um** e-mail de lembrete, agendado entre 7 dias antes e o dia da atividade (8h, véspera ou antes), com digest agrupando várias atividades do mesmo usuário no mesmo envio.
+* **RF06.3:** Quem já confirmou presença (`presente`) não recebe lembretes. A cota diária (`REMINDER_EMAIL_DAILY_LIMIT`) prioriza atividades mais próximas; o cron às 8h e a cada 30 min reforça envios pendentes.
 
 ### RF07 - Exportação de Agenda
 * **RF07.1:** A página da atividade deve oferecer a opção "Adicionar ao PHPogle Calendar", gerando uma URL dinâmica com os dados da atividade.
