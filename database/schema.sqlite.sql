@@ -91,7 +91,7 @@ CREATE TABLE IF NOT EXISTS lembretes_enviados (
     id              INTEGER PRIMARY KEY AUTOINCREMENT,
     user_id         INTEGER NOT NULL,
     atividade_id    INTEGER NOT NULL,
-    tipo            TEXT NOT NULL CHECK(tipo IN ('same_day', '24h', '1h')),
+    tipo            TEXT NOT NULL CHECK(tipo IN ('same_day', '24h', '1h', 'scheduled')),
     enviado_em      TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
     UNIQUE(user_id, atividade_id, tipo),
     FOREIGN KEY (user_id) REFERENCES usuarios(id) ON DELETE CASCADE ON UPDATE CASCADE,

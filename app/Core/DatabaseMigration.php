@@ -30,6 +30,7 @@ final class DatabaseMigration
         self::migrateRedemptionCodeExpiry($db);
         self::migratePasswordResetAndReminders($db);
         self::migrateEmailOutboundLog($db);
+        self::migrateLembreteScheduledTipo($db);
     }
 
     private static function migrateMysql(PDO $db): void
@@ -49,6 +50,53 @@ final class DatabaseMigration
         self::migrateRedemptionCodeExpiry($db);
         self::migratePasswordResetAndReminders($db);
         self::migrateEmailOutboundLog($db);
+        self::migrateLembreteScheduledTipo($db);
+    }
+
+    private static function migrateLembreteScheduledTipo(PDO $db): void
+    {
+        if (!self::tableExists($db, 'lembretes_enviados')) {
+            return;
+        }
+
+        if (DatabaseDialect::isSqlite()) {
+            $ddl = (string) $db->query(
+                "SELECT sql FROM sqlite_master WHERE type = 'table' AND name = 'lembretes_enviados'"
+            )->fetchColumn();
+            if ($ddl !== '' && str_contains($ddl, "'scheduled'")) {
+                return;
+            }
+
+            $db->exec('PRAGMA foreign_keys = OFF');
+            $db->exec(
+                'CREATE TABLE lembretes_enviados_new (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    user_id INTEGER NOT NULL,
+                    atividade_id INTEGER NOT NULL,
+                    tipo TEXT NOT NULL CHECK(tipo IN (\'same_day\', \'24h\', \'1h\', \'scheduled\')),
+                    enviado_em TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                    UNIQUE(user_id, atividade_id, tipo),
+                    FOREIGN KEY (user_id) REFERENCES usuarios(id) ON DELETE CASCADE ON UPDATE CASCADE,
+                    FOREIGN KEY (atividade_id) REFERENCES atividades(id) ON DELETE CASCADE ON UPDATE CASCADE
+                )'
+            );
+            $db->exec('INSERT INTO lembretes_enviados_new SELECT * FROM lembretes_enviados');
+            $db->exec('DROP TABLE lembretes_enviados');
+            $db->exec('ALTER TABLE lembretes_enviados_new RENAME TO lembretes_enviados');
+            $db->exec('PRAGMA foreign_keys = ON');
+            return;
+        }
+
+        $row = $db->query("SHOW COLUMNS FROM lembretes_enviados LIKE 'tipo'")->fetch();
+        $type = is_array($row) ? (string) ($row['Type'] ?? '') : '';
+        if ($type !== '' && str_contains($type, 'scheduled')) {
+            return;
+        }
+
+        $db->exec(
+            "ALTER TABLE lembretes_enviados
+             MODIFY tipo ENUM('same_day','24h','1h','scheduled') NOT NULL"
+        );
     }
 
     private static function migrateEmailOutboundLog(PDO $db): void
@@ -100,7 +148,7 @@ final class DatabaseMigration
                     id INTEGER PRIMARY KEY AUTOINCREMENT,
                     user_id INTEGER NOT NULL,
                     atividade_id INTEGER NOT NULL,
-                    tipo TEXT NOT NULL CHECK(tipo IN (\'same_day\', \'24h\', \'1h\')),
+                    tipo TEXT NOT NULL CHECK(tipo IN (\'same_day\', \'24h\', \'1h\', \'scheduled\')),
                     enviado_em TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
                     UNIQUE(user_id, atividade_id, tipo),
                     FOREIGN KEY (user_id) REFERENCES usuarios(id) ON DELETE CASCADE ON UPDATE CASCADE,
@@ -134,7 +182,7 @@ final class DatabaseMigration
                     id INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
                     user_id INT UNSIGNED NOT NULL,
                     atividade_id INT UNSIGNED NOT NULL,
-                    tipo ENUM(\'same_day\',\'24h\',\'1h\') NOT NULL,
+                    tipo ENUM(\'same_day\',\'24h\',\'1h\',\'scheduled\') NOT NULL,
                     enviado_em TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
                     UNIQUE KEY uq_lembrete (user_id, atividade_id, tipo),
                     CONSTRAINT fk_lembrete_user

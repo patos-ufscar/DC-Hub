@@ -138,7 +138,7 @@ CREATE TABLE IF NOT EXISTS lembretes_enviados (
     id              INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
     user_id         INT UNSIGNED NOT NULL,
     atividade_id    INT UNSIGNED NOT NULL,
-    tipo            ENUM('same_day','24h','1h') NOT NULL,
+    tipo            ENUM('same_day','24h','1h','scheduled') NOT NULL,
     enviado_em      TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
     UNIQUE KEY uq_lembrete (user_id, atividade_id, tipo),
     CONSTRAINT fk_lembrete_user

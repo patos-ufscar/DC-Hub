@@ -106,6 +106,8 @@ SMTP_FROM_NAME="DC Hub"
 
 # Máx. 50 lembretes/dia; recuperação de senha não entra nesta cota (útil com Resend ~100/dia)
 REMINDER_EMAIL_DAILY_LIMIT=50
+REMINDER_PLANNING_HORIZON_DAYS=7
+REMINDER_MAX_LEAD_DAYS=7
 ```
 
 **E-mail (obrigatório em produção):** recuperação de senha e lembretes usam [`app/Core/Mailer.php`](../app/Core/Mailer.php) com PHPMailer. O pacote **não** vai no deploy (rsync exclui `vendor/`). No servidor, instale uma vez:
@@ -148,13 +150,12 @@ O cron instala:
 | Horário | Script | Função |
 |---------|--------|--------|
 | 03:00 | `backup-sqlite.sh` | Backup diário do SQLite |
-| 08:00 | `send_reminders.php --type=same_day` | E-mail resumo das atividades do dia (inscritos) |
-| */30 min | `send_reminders.php` | Lembretes 24h e 1h antes (sem reenvio duplicado) |
+| 08:00 | `send_reminders.php` | Lembretes planejados — lote principal (1 e-mail por inscrição, digest por usuário) |
+| */30 min | `send_reminders.php` | Reforço diário e inscrições tardias (respeita cota de 50/dia) |
 
 Teste manual de lembretes:
 
 ```bash
-php /var/www/dc-hub/cron/send_reminders.php --type=same_day
 php /var/www/dc-hub/cron/send_reminders.php
 tail -f /var/www/dc-hub/backups/reminders.log
 ```
