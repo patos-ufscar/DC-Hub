@@ -17,11 +17,15 @@ cat <<EOF | sudo tee "${CRON_FILE}" >/dev/null
 # DC Hub — gerado por install-server-cron.sh
 SHELL=/bin/bash
 PATH=/usr/local/sbin:/usr/local/bin:/sbin:/bin:/usr/sbin:/usr/bin
+TZ=America/Sao_Paulo
 
 # Backup SQLite diário (03:00), mantém ~31 dias
 0 3 * * * root ${DEPLOY_PATH}/scripts/deploy/backup-sqlite.sh >> ${DEPLOY_PATH}/backups/backup.log 2>&1
 
-# Lembretes por e-mail (a cada 30 min)
+# Lembrete matinal — atividades do dia (8:00, fuso APP_TIMEZONE no .env)
+0 8 * * * root ${PHP_BIN} ${DEPLOY_PATH}/cron/send_reminders.php --type=same_day >> ${DEPLOY_PATH}/backups/reminders.log 2>&1
+
+# Lembretes 24h e 1h antes (a cada 30 min, com deduplicação)
 */30 * * * * root ${PHP_BIN} ${DEPLOY_PATH}/cron/send_reminders.php >> ${DEPLOY_PATH}/backups/reminders.log 2>&1
 EOF
 

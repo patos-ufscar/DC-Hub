@@ -28,6 +28,8 @@ final class DatabaseMigration
         self::migrateActivityOptions($db);
         self::migrateActivityStandalone($db);
         self::migrateRedemptionCodeExpiry($db);
+        self::migratePasswordResetAndReminders($db);
+        self::migrateEmailOutboundLog($db);
     }
 
     private static function migrateMysql(PDO $db): void
@@ -45,6 +47,105 @@ final class DatabaseMigration
         self::migrateActivityOptions($db);
         self::migrateActivityStandalone($db);
         self::migrateRedemptionCodeExpiry($db);
+        self::migratePasswordResetAndReminders($db);
+        self::migrateEmailOutboundLog($db);
+    }
+
+    private static function migrateEmailOutboundLog(PDO $db): void
+    {
+        if (DatabaseDialect::isSqlite()) {
+            $db->exec(
+                'CREATE TABLE IF NOT EXISTS email_outbound_log (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    category TEXT NOT NULL CHECK(category IN (\'reminder\', \'password_reset\')),
+                    sent_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
+                )'
+            );
+            $db->exec('CREATE INDEX IF NOT EXISTS idx_email_outbound_sent ON email_outbound_log(sent_at)');
+            $db->exec('CREATE INDEX IF NOT EXISTS idx_email_outbound_cat ON email_outbound_log(category, sent_at)');
+            return;
+        }
+
+        if (!self::tableExists($db, 'email_outbound_log')) {
+            $db->exec(
+                'CREATE TABLE email_outbound_log (
+                    id INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+                    category ENUM(\'reminder\', \'password_reset\') NOT NULL,
+                    sent_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                    INDEX idx_email_outbound_sent (sent_at),
+                    INDEX idx_email_outbound_cat (category, sent_at)
+                ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci'
+            );
+        }
+    }
+
+    private static function migratePasswordResetAndReminders(PDO $db): void
+    {
+        if (DatabaseDialect::isSqlite()) {
+            $db->exec(
+                'CREATE TABLE IF NOT EXISTS password_reset_tokens (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    user_id INTEGER NOT NULL,
+                    token_hash TEXT NOT NULL UNIQUE,
+                    expires_at TEXT NOT NULL,
+                    used_at TEXT DEFAULT NULL,
+                    created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                    FOREIGN KEY (user_id) REFERENCES usuarios(id) ON DELETE CASCADE ON UPDATE CASCADE
+                )'
+            );
+            $db->exec('CREATE INDEX IF NOT EXISTS idx_password_reset_user ON password_reset_tokens(user_id)');
+
+            $db->exec(
+                'CREATE TABLE IF NOT EXISTS lembretes_enviados (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    user_id INTEGER NOT NULL,
+                    atividade_id INTEGER NOT NULL,
+                    tipo TEXT NOT NULL CHECK(tipo IN (\'same_day\', \'24h\', \'1h\')),
+                    enviado_em TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                    UNIQUE(user_id, atividade_id, tipo),
+                    FOREIGN KEY (user_id) REFERENCES usuarios(id) ON DELETE CASCADE ON UPDATE CASCADE,
+                    FOREIGN KEY (atividade_id) REFERENCES atividades(id) ON DELETE CASCADE ON UPDATE CASCADE
+                )'
+            );
+            return;
+        }
+
+        if (!self::tableExists($db, 'password_reset_tokens')) {
+            $db->exec(
+                'CREATE TABLE password_reset_tokens (
+                    id INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+                    user_id INT UNSIGNED NOT NULL,
+                    token_hash CHAR(64) NOT NULL,
+                    expires_at DATETIME NOT NULL,
+                    used_at DATETIME DEFAULT NULL,
+                    created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                    UNIQUE KEY uq_password_reset_hash (token_hash),
+                    INDEX idx_password_reset_user (user_id),
+                    CONSTRAINT fk_password_reset_user
+                        FOREIGN KEY (user_id) REFERENCES usuarios(id)
+                        ON DELETE CASCADE ON UPDATE CASCADE
+                ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci'
+            );
+        }
+
+        if (!self::tableExists($db, 'lembretes_enviados')) {
+            $db->exec(
+                'CREATE TABLE lembretes_enviados (
+                    id INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+                    user_id INT UNSIGNED NOT NULL,
+                    atividade_id INT UNSIGNED NOT NULL,
+                    tipo ENUM(\'same_day\',\'24h\',\'1h\') NOT NULL,
+                    enviado_em TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                    UNIQUE KEY uq_lembrete (user_id, atividade_id, tipo),
+                    CONSTRAINT fk_lembrete_user
+                        FOREIGN KEY (user_id) REFERENCES usuarios(id)
+                        ON DELETE CASCADE ON UPDATE CASCADE,
+                    CONSTRAINT fk_lembrete_atividade
+                        FOREIGN KEY (atividade_id) REFERENCES atividades(id)
+                        ON DELETE CASCADE ON UPDATE CASCADE
+                ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci'
+            );
+        }
     }
 
     private static function migrateRedemptionCodeExpiry(PDO $db): void

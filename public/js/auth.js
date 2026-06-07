@@ -6,6 +6,41 @@
  */
 const Auth = (() => {
 
+    function rememberPendingReset(token) {
+        try {
+            sessionStorage.setItem('dc_pending_reset', token);
+        } catch { /* ignore */ }
+    }
+
+    function clearPendingReset() {
+        try {
+            sessionStorage.removeItem('dc_pending_reset');
+        } catch { /* ignore */ }
+    }
+
+    function openResetPasswordModal(token) {
+        const input = document.getElementById('resetToken');
+        if (!input || !token) return;
+        input.value = token;
+        rememberPendingReset(token);
+        App.hideFormError('resetPasswordError');
+        document.getElementById('resetPasswordForm')?.reset();
+        input.value = token;
+        App.openModal('resetPasswordModal');
+    }
+
+    function handleResetDeepLink() {
+        let token = new URLSearchParams(window.location.search).get('reset');
+        if (!token) {
+            try {
+                token = sessionStorage.getItem('dc_pending_reset');
+            } catch { /* ignore */ }
+        }
+        if (token && token.length >= 32) {
+            setTimeout(() => openResetPasswordModal(token), 400);
+        }
+    }
+
     function reopenDeepLinkAfterAuth() {
         const params = new URLSearchParams(window.location.search);
         let eventoId = params.get('evento');
@@ -83,6 +118,72 @@ const Auth = (() => {
             App.closeModal('registerModal');
             setTimeout(() => App.openModal('loginModal'), 300);
         });
+
+        document.getElementById('switchToForgotPassword')?.addEventListener('click', (e) => {
+            e.preventDefault();
+            App.hideFormError('forgotPasswordError');
+            const suc = document.getElementById('forgotPasswordSuccess');
+            if (suc) suc.classList.add('d-none');
+            App.closeModal('loginModal');
+            setTimeout(() => App.openModal('forgotPasswordModal'), 300);
+        });
+
+        document.getElementById('switchToLoginFromForgot')?.addEventListener('click', (e) => {
+            e.preventDefault();
+            App.closeModal('forgotPasswordModal');
+            setTimeout(() => App.openModal('loginModal'), 300);
+        });
+
+        document.getElementById('forgotPasswordForm')?.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            App.hideFormError('forgotPasswordError');
+            const suc = document.getElementById('forgotPasswordSuccess');
+            if (suc) suc.classList.add('d-none');
+            const data = App.formData(e.target);
+            const res = await App.api('auth.requestPasswordReset', { body: data });
+            if (res.ok) {
+                if (suc) {
+                    suc.textContent = res.message || 'Se o e-mail estiver cadastrado, você receberá um link em instantes.';
+                    suc.classList.remove('d-none');
+                }
+                e.target.reset();
+            } else {
+                App.showFormError('forgotPasswordError', res.error || 'Erro ao solicitar recuperação.');
+            }
+        });
+
+        document.getElementById('resetPasswordForm')?.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            App.hideFormError('resetPasswordError');
+            const data = App.formData(e.target);
+            if (data.senha !== data.senha_confirm) {
+                App.showFormError('resetPasswordError', 'As senhas não coincidem.');
+                return;
+            }
+            const res = await App.api('auth.resetPassword', { body: data });
+            if (res.ok) {
+                clearPendingReset();
+                if (window.location.search.includes('reset=')) {
+                    history.replaceState({}, '', App.buildHomeUrl());
+                }
+                App.closeModal('resetPasswordModal');
+                App.toast(res.message || 'Senha redefinida!', 'success');
+                setTimeout(() => App.openModal('loginModal'), 300);
+            } else {
+                App.showFormError('resetPasswordError', res.error || 'Erro ao redefinir senha.');
+            }
+        });
+
+        document.getElementById('resetPasswordModal')?.addEventListener('hidden.bs.modal', () => {
+            const loginOpen = document.getElementById('loginModal')?.classList.contains('show');
+            if (loginOpen) return;
+            if (window.location.search.includes('reset=')) {
+                history.replaceState({}, '', App.buildHomeUrl());
+            }
+            clearPendingReset();
+        });
+
+        handleResetDeepLink();
 
         /* ─── Logout ─────────────────────────────────────── */
         const logoutHandler = async (e) => {

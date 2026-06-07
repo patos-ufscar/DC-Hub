@@ -75,6 +75,38 @@ CREATE TABLE IF NOT EXISTS atividades (
 
 CREATE INDEX IF NOT EXISTS idx_atividades_data ON atividades(data);
 
+CREATE TABLE IF NOT EXISTS password_reset_tokens (
+    id          INTEGER PRIMARY KEY AUTOINCREMENT,
+    user_id     INTEGER NOT NULL,
+    token_hash  TEXT NOT NULL UNIQUE,
+    expires_at  TEXT NOT NULL,
+    used_at     TEXT DEFAULT NULL,
+    created_at  TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (user_id) REFERENCES usuarios(id) ON DELETE CASCADE ON UPDATE CASCADE
+);
+
+CREATE INDEX IF NOT EXISTS idx_password_reset_user ON password_reset_tokens(user_id);
+
+CREATE TABLE IF NOT EXISTS lembretes_enviados (
+    id              INTEGER PRIMARY KEY AUTOINCREMENT,
+    user_id         INTEGER NOT NULL,
+    atividade_id    INTEGER NOT NULL,
+    tipo            TEXT NOT NULL CHECK(tipo IN ('same_day', '24h', '1h')),
+    enviado_em      TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    UNIQUE(user_id, atividade_id, tipo),
+    FOREIGN KEY (user_id) REFERENCES usuarios(id) ON DELETE CASCADE ON UPDATE CASCADE,
+    FOREIGN KEY (atividade_id) REFERENCES atividades(id) ON DELETE CASCADE ON UPDATE CASCADE
+);
+
+CREATE TABLE IF NOT EXISTS email_outbound_log (
+    id          INTEGER PRIMARY KEY AUTOINCREMENT,
+    category    TEXT NOT NULL CHECK(category IN ('reminder', 'password_reset')),
+    sent_at     TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE INDEX IF NOT EXISTS idx_email_outbound_sent ON email_outbound_log(sent_at);
+CREATE INDEX IF NOT EXISTS idx_email_outbound_cat ON email_outbound_log(category, sent_at);
+
 CREATE TABLE IF NOT EXISTS inscricoes (
     id              INTEGER PRIMARY KEY AUTOINCREMENT,
     user_id         INTEGER NOT NULL,

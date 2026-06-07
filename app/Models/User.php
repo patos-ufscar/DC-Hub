@@ -142,6 +142,15 @@ class User
         return $row ?: null;
     }
 
+    public function updatePassword(int $id, string $plainPassword): void
+    {
+        $hash = password_hash($plainPassword, PASSWORD_BCRYPT);
+        $stmt = $this->db->prepare('UPDATE usuarios SET senha = :senha WHERE id = :id');
+        $stmt->bindValue(':senha', $hash);
+        $stmt->bindValue(':id', $id, PDO::PARAM_INT);
+        $stmt->execute();
+    }
+
     public function ensurePresencaUuid(int $id): string
     {
         $user = $this->findById($id);

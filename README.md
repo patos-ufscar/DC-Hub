@@ -100,6 +100,8 @@ Edite `.env` se necessário. O padrão usa **SQLite** em `database/dc_hub.sqlite
 
 Defina `APP_URL` com a URL pública do site em produção (ex.: `https://dchub.seudominio.br`) para que os **links de compartilhamento** de atividades não usem `localhost`.
 
+Configure também `SMTP_*` e `APP_TIMEZONE` (padrão `America/Sao_Paulo`) para **recuperação de senha** e **lembretes por e-mail**. Ver [docs/DEPLOY.md](docs/DEPLOY.md).
+
 ### 2. Inicializar o banco (opcional)
 
 O SQLite é criado automaticamente na primeira requisição. Para forçar criação e seeds:
@@ -130,8 +132,14 @@ Todas as ações JSON usam o parâmetro `action` em `public/index.php`, por exem
 - `?action=calendar.data&month=05&year=2026`
 - `?action=activity.detail&id=1`
 - `?action=registration.toggle` (POST)
+- `?action=auth.requestPasswordReset` (POST) — solicitar link de recuperação de senha
+- `?action=auth.resetPassword` (POST) — definir nova senha com token do e-mail
 
 A página principal é servida sem `action` (SPA leve com modais em JavaScript).
+
+### Recuperação de senha
+
+No login, use **Esqueci minha senha**. O link do e-mail abre `/?reset=TOKEN` e permite definir uma nova senha (válido por 60 minutos).
 
 ---
 

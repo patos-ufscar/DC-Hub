@@ -11,6 +11,8 @@ final class Request
         'auth.register',
         'auth.logout',
         'auth.updateProfile',
+        'auth.requestPasswordReset',
+        'auth.resetPassword',
         'event.create',
         'event.update',
         'event.delete',
