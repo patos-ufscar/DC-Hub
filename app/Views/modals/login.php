@@ -13,8 +13,11 @@
                         <input type="email" class="form-control" id="loginEmail" name="email" required>
                     </div>
                     <div class="mb-3">
-                        <label for="loginSenha" class="form-label">Senha</label>
-                        <input type="password" class="form-control" id="loginSenha" name="senha" required>
+                        <div class="d-flex justify-content-between align-items-center">
+                            <label for="loginSenha" class="form-label mb-0">Senha</label>
+                            <a href="#" id="switchToForgotPassword" class="small text-decoration-none" style="color: var(--verde-agua-escuro);">Esqueci minha senha</a>
+                        </div>
+                        <input type="password" class="form-control mt-1" id="loginSenha" name="senha" required>
                     </div>
                     <div id="loginError" class="alert alert-danger d-none"></div>
                     <button type="submit" class="btn btn-dc-primary w-100">Entrar</button>

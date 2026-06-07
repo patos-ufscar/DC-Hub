@@ -115,7 +115,53 @@ CREATE TABLE IF NOT EXISTS atividades (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- ============================================================
--- 7. Inscrições (RSVP / Presença)
+-- 7. Tokens de recuperação de senha
+-- ============================================================
+CREATE TABLE IF NOT EXISTS password_reset_tokens (
+    id          INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+    user_id     INT UNSIGNED NOT NULL,
+    token_hash  CHAR(64) NOT NULL,
+    expires_at  DATETIME NOT NULL,
+    used_at     DATETIME DEFAULT NULL,
+    created_at  TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    UNIQUE KEY uq_password_reset_hash (token_hash),
+    INDEX idx_password_reset_user (user_id),
+    CONSTRAINT fk_password_reset_user
+        FOREIGN KEY (user_id) REFERENCES usuarios(id)
+        ON DELETE CASCADE ON UPDATE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- ============================================================
+-- 8. Lembretes por e-mail (deduplicação)
+-- ============================================================
+CREATE TABLE IF NOT EXISTS lembretes_enviados (
+    id              INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+    user_id         INT UNSIGNED NOT NULL,
+    atividade_id    INT UNSIGNED NOT NULL,
+    tipo            ENUM('same_day','24h','1h') NOT NULL,
+    enviado_em      TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    UNIQUE KEY uq_lembrete (user_id, atividade_id, tipo),
+    CONSTRAINT fk_lembrete_user
+        FOREIGN KEY (user_id) REFERENCES usuarios(id)
+        ON DELETE CASCADE ON UPDATE CASCADE,
+    CONSTRAINT fk_lembrete_atividade
+        FOREIGN KEY (atividade_id) REFERENCES atividades(id)
+        ON DELETE CASCADE ON UPDATE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- ============================================================
+-- 9. Log de e-mails enviados (cota de lembretes)
+-- ============================================================
+CREATE TABLE IF NOT EXISTS email_outbound_log (
+    id          INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+    category    ENUM('reminder','password_reset') NOT NULL,
+    sent_at     TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    INDEX idx_email_outbound_sent (sent_at),
+    INDEX idx_email_outbound_cat (category, sent_at)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- ============================================================
+-- 10. Inscrições (RSVP / Presença)
 -- ============================================================
 CREATE TABLE IF NOT EXISTS inscricoes (
     id              INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,

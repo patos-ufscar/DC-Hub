@@ -24,6 +24,8 @@ try {
         'auth.register'        => (new App\Controllers\AuthController($db))->register(),
         'auth.logout'          => (new App\Controllers\AuthController($db))->logout(),
         'auth.updateProfile'   => (new App\Controllers\AuthController($db))->updateProfile(),
+        'auth.requestPasswordReset' => (new App\Controllers\AuthController($db))->requestPasswordReset(),
+        'auth.resetPassword'   => (new App\Controllers\AuthController($db))->resetPassword(),
 
         // Calendar
         'calendar.data'        => (new App\Controllers\CalendarController($db))->getData(),

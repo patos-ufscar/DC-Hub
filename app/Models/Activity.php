@@ -209,12 +209,33 @@ class Activity
         return $row ?: null;
     }
 
+    /** Inscrições do dia (RSVP ou presente) para lembrete matinal. */
+    public function listTodayRsvpEntries(string $dateYmd): array
+    {
+        $stmt = $this->db->prepare(
+            "SELECT a.id AS atividade_id, a.titulo, a.data, a.hora_inicio, a.hora_fim,
+                    l.nome AS local_nome, e.titulo AS evento_titulo,
+                    u.id AS user_id, u.email AS user_email, u.nome_exibicao AS user_nome
+             FROM atividades a
+             JOIN inscricoes i ON i.atividade_id = a.id AND i.status IN ('rsvp', 'presente')
+             JOIN usuarios u ON u.id = i.user_id
+             JOIN locais l ON l.id = a.local_id
+             LEFT JOIN eventos e ON e.id = a.evento_id
+             WHERE a.data = :hoje
+             ORDER BY u.id, a.hora_inicio, a.titulo"
+        );
+        $stmt->bindValue(':hoje', $dateYmd);
+        $stmt->execute();
+
+        return $stmt->fetchAll();
+    }
+
     public function getUpcomingWithRsvp(int $hoursAhead): array
     {
         $upcoming = DatabaseDialect::upcomingActivitiesWhere();
         $stmt = $this->db->prepare(
             "SELECT a.*, e.titulo AS evento_titulo, g.nome AS grupo_nome, l.nome AS local_nome,
-                    u.email AS user_email, u.nome_exibicao AS user_nome
+                    u.id AS user_id, u.email AS user_email, u.nome_exibicao AS user_nome
              FROM atividades a
              JOIN grupos g ON g.id = a.grupo_id
              LEFT JOIN eventos e ON e.id = a.evento_id

@@ -95,6 +95,8 @@ $assetVersion = static function (string $relativePath): string {
 
     <!-- Modals -->
     <?php include __DIR__ . '/modals/login.php'; ?>
+    <?php include __DIR__ . '/modals/forgot-password.php'; ?>
+    <?php include __DIR__ . '/modals/reset-password.php'; ?>
     <?php include __DIR__ . '/modals/register.php'; ?>
     <?php include __DIR__ . '/modals/profile.php'; ?>
     <?php include __DIR__ . '/modals/event-form.php'; ?>

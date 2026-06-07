@@ -92,12 +92,31 @@ Exemplo produção:
 ```env
 APP_ENV=production
 APP_URL=https://dchub.seudominio.br
+APP_TIMEZONE=America/Sao_Paulo
 
 DB_DRIVER=sqlite
 DB_PATH=database/dc_hub.sqlite
 
-# SMTP ...
+SMTP_HOST=smtp.seudominio.br
+SMTP_PORT=587
+SMTP_USER=noreply@seudominio.br
+SMTP_PASS=***
+SMTP_FROM=noreply@seudominio.br
+SMTP_FROM_NAME="DC Hub"
+
+# Máx. 50 lembretes/dia; recuperação de senha não entra nesta cota (útil com Resend ~100/dia)
+REMINDER_EMAIL_DAILY_LIMIT=50
 ```
+
+**E-mail (obrigatório em produção):** recuperação de senha e lembretes usam [`app/Core/Mailer.php`](../app/Core/Mailer.php) com PHPMailer. O pacote **não** vai no deploy (rsync exclui `vendor/`). No servidor, instale uma vez:
+
+```bash
+cd /var/www/dc-hub
+mkdir -p vendor/phpmailer
+# Baixe PHPMailer 6.x em vendor/phpmailer/ (src/Exception.php, PHPMailer.php, SMTP.php)
+```
+
+Teste SMTP manualmente após configurar `.env`.
 
 ### 4. Apache
 
@@ -122,6 +141,22 @@ Após o primeiro deploy:
 cd /var/www/dc-hub
 sudo chmod +x scripts/deploy/*.sh
 sudo ./scripts/deploy/install-server-cron.sh /var/www/dc-hub
+```
+
+O cron instala:
+
+| Horário | Script | Função |
+|---------|--------|--------|
+| 03:00 | `backup-sqlite.sh` | Backup diário do SQLite |
+| 08:00 | `send_reminders.php --type=same_day` | E-mail resumo das atividades do dia (inscritos) |
+| */30 min | `send_reminders.php` | Lembretes 24h e 1h antes (sem reenvio duplicado) |
+
+Teste manual de lembretes:
+
+```bash
+php /var/www/dc-hub/cron/send_reminders.php --type=same_day
+php /var/www/dc-hub/cron/send_reminders.php
+tail -f /var/www/dc-hub/backups/reminders.log
 ```
 
 Backup manual:
