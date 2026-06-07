@@ -82,7 +82,7 @@ function sendPlannedDigests(
 {$intro}
 <ul>{$listHtml}</ul>
 <p>Nos vemos lá!</p>
-<p><small>DC Hub — Departamento de Computação</small></p>
+<p><small>DC Hub — uma iniciativa PATOS.dev</small></p>
 HTML;
 
         if ($mailer->send($digest['email'], $subject, $body)) {

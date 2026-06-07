@@ -165,7 +165,7 @@ class AuthController
 <p>Recebemos uma solicitação para redefinir sua senha. Clique no link abaixo (válido por 60 minutos):</p>
 <p><a href="{$resetUrl}">Redefinir minha senha</a></p>
 <p>Se você não solicitou isso, ignore este e-mail.</p>
-<p><small>DC Hub — Departamento de Computação</small></p>
+<p><small>DC Hub — uma iniciativa PATOS.dev</small></p>
 HTML;
 
             if ((new Mailer())->send($user['email'], 'Redefinir senha — DC Hub', $body)) {
