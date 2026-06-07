@@ -24,3 +24,39 @@ jobs:
         run: |
           set -e
           find app public cron scripts -name '*.php' -print0 | xargs -0 -n1 php -l
+
+  php-tests:
+    name: PHP tests
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Setup PHP
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.2'
+          coverage: pcov
+          extensions: sqlite3, mbstring
+          ini-values: pcov.directory=app
+
+      - name: Install dependencies
+        run: composer install --no-interaction --prefer-dist
+
+      - name: Run PHPUnit with coverage
+        run: vendor/bin/phpunit --coverage-clover build/coverage/clover.xml
+
+      - name: Load coverage baseline from main
+        run: |
+          git fetch origin main --depth=1
+          if git show origin/main:.github/coverage-baseline.txt > /tmp/coverage-baseline.txt 2>/dev/null; then
+            echo "Baseline da main:"
+            cat /tmp/coverage-baseline.txt
+          else
+            echo "0.00" > /tmp/coverage-baseline.txt
+            echo "Baseline ausente na main; usando 0%."
+          fi
+
+      - name: Check coverage regression (max −2 p.p.)
+        run: php scripts/ci/check-coverage.php build/coverage/clover.xml /tmp/coverage-baseline.txt

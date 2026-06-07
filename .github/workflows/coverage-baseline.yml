@@ -1,0 +1,44 @@
+name: Coverage baseline
+
+on:
+  push:
+    branches: [main]
+
+permissions:
+  contents: write
+
+jobs:
+  update-baseline:
+    name: Update coverage baseline
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup PHP
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.2'
+          coverage: pcov
+          extensions: sqlite3, mbstring
+          ini-values: pcov.directory=app
+
+      - name: Install dependencies
+        run: composer install --no-interaction --prefer-dist
+
+      - name: Run tests with coverage
+        run: vendor/bin/phpunit --coverage-clover build/coverage/clover.xml
+
+      - name: Update baseline file
+        run: php scripts/ci/update-coverage-baseline.php build/coverage/clover.xml
+
+      - name: Commit baseline if changed
+        run: |
+          if git diff --quiet .github/coverage-baseline.txt; then
+            echo "Baseline inalterada."
+            exit 0
+          fi
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add .github/coverage-baseline.txt
+          git commit -m "chore: atualizar baseline de cobertura de testes [skip ci]"
+          git push

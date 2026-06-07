@@ -179,14 +179,16 @@ No login, use **Esqueci minha senha**. O link do e-mail abre `/?reset=TOKEN` e p
    - Commits em português ou inglês, mensagens claras (ex.: `feat:`, `fix:`, `docs:`)
    - Não commitar `.env`, `database/*.sqlite` nem credenciais
 
-4. **Teste** manualmente os fluxos que alterou (calendário, RSVP, check-in, admin).
+4. **Testes automatizados** — rode `composer install` e `composer test`. Em PRs o CI executa PHPUnit e bloqueia se a cobertura cair mais de **2 p.p.** abaixo da baseline da `main` (`.github/coverage-baseline.txt`). Ao mergear na `main`, a baseline sobe automaticamente quando a cobertura melhora.
 
-5. Abra um **Pull Request** descrevendo o que mudou e como testar.
+5. **Teste** manualmente os fluxos que alterou (calendário, RSVP, check-in, admin).
+
+6. Abra um **Pull Request** descrevendo o que mudou e como testar.
 
 ### Ideias de contribuição
 
 - Melhorias de acessibilidade e mobile
-- Testes automatizados (PHPUnit / Playwright)
+- Testes E2E (Playwright)
 - Notificações e lembretes (`cron/send_reminders.php`)
 - Internacionalização (i18n)
 - Documentação de API OpenAPI

@@ -72,11 +72,6 @@ final class RateLimiter
 
     private function ensureTable(): void
     {
-        static $ready = false;
-        if ($ready) {
-            return;
-        }
-
         if (DatabaseDialect::isSqlite()) {
             $this->db->exec(
                 'CREATE TABLE IF NOT EXISTS rate_limits (
@@ -94,8 +89,6 @@ final class RateLimiter
                 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4'
             );
         }
-
-        $ready = true;
     }
 
     public static function clientIp(): string
