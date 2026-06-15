@@ -12,7 +12,7 @@ $pageDescription = 'Calendário de eventos e atividades do Departamento de Compu
     . 'Inscrições, presença por QR Code e certificados. Desenvolvido por PATOS.';
 $publicUrl = rtrim(AppUrl::base(), '/');
 $pageUrl = $publicUrl;
-$ogImage = $pageUrl . '/assets/images/og-image.png';
+$ogImage = $pageUrl . '/assets/images/og-image.png?v=' . $assetVersion('assets/images/og-image.png');
 
 /** @param string $relativePath caminho relativo a public/ (ex.: js/app.js) */
 $assetVersion = static function (string $relativePath): string {
@@ -40,7 +40,7 @@ $assetVersion = static function (string $relativePath): string {
     <meta property="og:image" content="<?= htmlspecialchars($ogImage, ENT_QUOTES, 'UTF-8') ?>">
     <meta property="og:image:width" content="1200">
     <meta property="og:image:height" content="630">
-    <meta property="og:image:alt" content="Logo DC Hub — calendário do Departamento de Computação UFSCar">
+    <meta property="og:image:alt" content="DC Hub — logo">
 
     <!-- Twitter / X -->
     <meta name="twitter:card" content="summary_large_image">
