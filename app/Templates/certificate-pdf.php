@@ -152,7 +152,7 @@
 
         <div class="footer">
             <p class="date">Emitido em <?= $dataEmissao ?></p>
-            <p>DC Hub — Departamento de Computação</p>
+            <p>DC Hub — uma iniciativa PATOS.dev</p>
         </div>
     </div>
 </body>

@@ -1,6 +1,6 @@
 # DC Hub
 
-Plataforma web para centralizar eventos, atividades e inscrições do **Departamento de Computação (UFSCar)** e dos **grupos de extensão** (ex.: PATOS).
+Plataforma web para centralizar eventos, atividades e inscrições dos **grupos de extensão PATOS**.
 
 O DC Hub oferece um calendário interativo, inscrições (RSVP), validação de presença por QR Code e emissão de certificados para quem participou das atividades.
 
@@ -210,4 +210,4 @@ No login, use **Esqueci minha senha**. O link do e-mail abre `/?reset=TOKEN` e p
 
 ---
 
-Desenvolvido por PATOS para a comunidade do Departamento de Computação — UFSCar.
+Desenvolvido por **PATOS** — [patos.dev](https://patos.dev).
