@@ -12,13 +12,14 @@ $pageDescription = 'Calendário de eventos e atividades PATOS. '
     . 'Inscrições, presença por QR Code e certificados. Desenvolvido por PATOS.';
 $publicUrl = rtrim(AppUrl::base(), '/');
 $pageUrl = $publicUrl;
-$ogImage = $pageUrl . '/assets/images/og-image.png?v=' . $assetVersion('assets/images/og-image.png');
 
 /** @param string $relativePath caminho relativo a public/ (ex.: js/app.js) */
 $assetVersion = static function (string $relativePath): string {
     $full = dirname(__DIR__, 2) . '/public/' . ltrim($relativePath, '/');
     return is_file($full) ? (string) filemtime($full) : '0';
 };
+
+$ogImage = $pageUrl . '/assets/images/og-image.png?v=' . $assetVersion('assets/images/og-image.png');
 ?>
 <!DOCTYPE html>
 <html lang="pt-BR" data-public-url="<?= htmlspecialchars($publicUrl, ENT_QUOTES, 'UTF-8') ?>">
