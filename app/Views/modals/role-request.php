@@ -9,8 +9,8 @@
             <div class="modal-body">
                 <div class="alert alert-light border mb-3 role-request-notice">
                     <p class="mb-2">
-                        <strong>Solicite apenas se você integra um grupo de extensão do DC</strong> e pode
-                        representá-lo como responsável ou representante autorizado perante o departamento.
+                        <strong>Solicite apenas se você integra um grupo de extensão PATOS</strong> e pode
+                        representá-lo como responsável ou representante autorizado perante o PATOS.
                     </p>
                     <p class="mb-0 small text-muted">
                         Se o seu grupo ainda não estiver cadastrado no sistema, escolha a opção
