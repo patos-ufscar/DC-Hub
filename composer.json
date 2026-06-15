@@ -1,6 +1,6 @@
 {
     "name": "patos-ufscar/dc-hub",
-    "description": "Calendário e gestão de atividades — DC/UFSCar (PATOS)",
+    "description": "Calendário e gestão de atividades — PATOS",
     "type": "project",
     "license": "proprietary",
     "require": {

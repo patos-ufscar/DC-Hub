@@ -1,13 +1,13 @@
 # Documento de Requisitos: DC Hub
 
-**Projeto:** Plataforma de centralização de eventos do Departamento de Computação e Grupos de Extensão.
-**Organização:** PATOS (UFSCar)
+**Projeto:** Plataforma de centralização de eventos dos Grupos de Extensão PATOS.
+**Organização:** PATOS
 **Versão:** 1.1 (Foco no MVP)
 
 ---
 
 ## 1. Visão Geral do Projeto
-O **DC Hub** é uma aplicação web desenvolvida para centralizar a comunicação de atividades, reuniões e eventos dos grupos de extensão e do Departamento de Computação. O sistema oferece um calendário interativo, gestão de inscrições (RSVP), e um fluxo completo de emissão de certificados com base na validação de presença.
+O **DC Hub** é uma aplicação web desenvolvida pelo **PATOS** para centralizar a comunicação de atividades, reuniões e eventos dos grupos de extensão. O sistema oferece um calendário interativo, gestão de inscrições (RSVP), e um fluxo completo de emissão de certificados com base na validação de presença.
 
 ## 2. Stack Tecnológica (MVP)
 * **Backend:** PHP (PHPlang) com padrão MVC.
@@ -32,7 +32,7 @@ O **DC Hub** é uma aplicação web desenvolvida para centralizar a comunicaçã
 
 ### RF02 - Visualização de Calendário
 * **RF02.1:** A página principal deve exibir um calendário interativo com as atividades programadas.
-* **RF02.2:** O calendário deve permitir filtros por "Grupo de Extensão" ou "Departamento".
+* **RF02.2:** O calendário deve permitir filtros por "Grupo de Extensão".
 * **RF02.3:** O calendário deve oferecer visualizações por mês, semana e dia.
 
 ### RF03 - Gestão de Locais

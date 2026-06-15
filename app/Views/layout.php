@@ -7,8 +7,8 @@ use App\Core\Session;
 
 $user = Session::getUser();
 $csrfToken = Csrf::generateToken();
-$pageTitle = 'DC Hub — Calendário do Departamento de Computação';
-$pageDescription = 'Calendário de eventos e atividades do Departamento de Computação (UFSCar). '
+$pageTitle = 'DC Hub — Calendário PATOS';
+$pageDescription = 'Calendário de eventos e atividades PATOS. '
     . 'Inscrições, presença por QR Code e certificados. Desenvolvido por PATOS.';
 $publicUrl = rtrim(AppUrl::base(), '/');
 $pageUrl = $publicUrl;
@@ -27,7 +27,7 @@ $assetVersion = static function (string $relativePath): string {
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
     <title><?= htmlspecialchars($pageTitle, ENT_QUOTES, 'UTF-8') ?></title>
     <meta name="description" content="<?= htmlspecialchars($pageDescription, ENT_QUOTES, 'UTF-8') ?>">
-    <meta name="author" content="PATOS — UFSCar">
+    <meta name="author" content="PATOS">
     <meta name="theme-color" content="#001219">
 
     <!-- Open Graph (WhatsApp, Discord, LinkedIn, Facebook…) -->
