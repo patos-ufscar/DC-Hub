@@ -1484,6 +1484,28 @@ button,
     border-radius: 8px;
 }
 
+/* --- Contributors credit (below calendar) --- */
+.dc-contrib-credit {
+    max-width: var(--layout-max);
+    margin: -1rem auto 2rem;
+    padding: 0 1.75rem;
+    text-align: center;
+    font-family: var(--font-accent);
+    font-size: .8rem;
+    font-weight: 600;
+    color: var(--ciano-escuro);
+    letter-spacing: .02em;
+}
+
+.dc-contrib-credit a {
+    color: var(--verde-agua-escuro);
+    text-decoration: none;
+}
+
+.dc-contrib-credit a:hover {
+    text-decoration: underline;
+}
+
 /* --- PATOS credit --- */
 .dc-patos-credit {
     display: flex;

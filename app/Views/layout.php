@@ -84,6 +84,12 @@ $ogImage = $pageUrl . '/assets/images/og-image.png?v=' . $assetVersion('assets/i
     <!-- Calendar -->
     <?php include __DIR__ . '/partials/calendar-grid.php'; ?>
 
+    <!-- Contributors credit -->
+    <p class="dc-contrib-credit">
+        O DCHub é mantido pela equipe do PATOS e seus contribuidores.
+        <a href="https://github.com/patos-ufscar/DC-Hub" target="_blank" rel="noopener">Se torne um também!</a> ❤️
+    </p>
+
     <!-- Floating Buttons -->
     <?php include __DIR__ . '/partials/floating-buttons.php'; ?>
 
