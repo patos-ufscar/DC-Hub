@@ -1,11 +1,15 @@
 name: AI Security Review
 
+# pull_request_target roda no contexto do repo BASE (não do fork):
+# secrets e permissão de comentar ficam disponíveis em PRs de fork.
+# Seguro aqui porque só geramos o diff do PR — não executamos código do fork.
 on:
-  pull_request:
+  pull_request_target:
     branches: [main]
 
 permissions:
   contents: read
+  issues: write
   pull-requests: write
 
 jobs:
@@ -18,13 +22,14 @@ jobs:
     steps:
       - uses: actions/checkout@v4
         with:
+          ref: ${{ github.event.pull_request.base.sha }}
           fetch-depth: 0
 
       - name: Gerar diff do PR
         run: |
           set -euo pipefail
-          git fetch origin "${{ github.base_ref }}" --depth=1
-          git diff "origin/${{ github.base_ref }}...HEAD" > pr.diff
+          git fetch origin "pull/${{ github.event.pull_request.number }}/head:pr-head"
+          git diff "${{ github.event.pull_request.base.sha }}...pr-head" > pr.diff
           echo "Linhas no diff: $(wc -l < pr.diff)"
 
       - name: Avaliar segurança (OpenAI)
@@ -36,7 +41,8 @@ jobs:
         run: python3 scripts/ci/ai_security_review.py
 
       - name: Comentar resultado no PR
-        if: always() && github.event_name == 'pull_request'
+        if: always()
+        continue-on-error: true
         uses: actions/github-script@v7
         env:
           MIN_SECURITY_SCORE: ${{ env.MIN_SECURITY_SCORE }}
@@ -72,12 +78,23 @@ jobs:
               }
             }
             body += `\n---\n_Modelo: \`${{ env.OPENAI_MODEL }}\` · Secret: \`OPENAI_API_KEY\`_`;
-            await github.rest.issues.createComment({
-              issue_number: context.issue.number,
-              owner: context.repo.owner,
-              repo: context.repo.repo,
-              body,
-            });
+            try {
+              await github.rest.issues.createComment({
+                issue_number: context.issue.number,
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                body,
+              });
+            } catch (err) {
+              const msg = err?.message || String(err);
+              if (msg.includes('Resource not accessible by integration')) {
+                core.warning(
+                  'Sem permissão para comentar. Resultado está no summary do workflow.'
+                );
+              } else {
+                throw err;
+              }
+            }
 
       - name: Falhar apenas se nota < mínimo (avaliação concluída)
         if: steps.review.outcome == 'failure'
