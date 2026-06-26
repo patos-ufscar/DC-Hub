@@ -1,0 +1,58 @@
+name: AI Security Commands
+
+on:
+  issue_comment:
+    types: [created]
+
+permissions:
+  pull-requests: write
+  issues: write
+
+jobs:
+  ai-bypass:
+    name: Comando /ai-bypass
+    if: github.event.issue.pull_request && contains(github.event.comment.body, '/ai-bypass')
+    runs-on: ubuntu-latest
+    steps:
+      - name: Validar autor e aplicar bypass
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const ALLOWED_USER = 'marlonhenq';
+            const BYPASS_LABEL = 'ai-security-bypass';
+            const comment = context.payload.comment;
+            const author = comment.user.login;
+
+            if (author !== ALLOWED_USER) {
+              await github.rest.issues.createComment({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                issue_number: context.issue.number,
+                body: `⛔ \`/ai-bypass\` só pode ser usado por **@${ALLOWED_USER}**. Você é @${author}.`,
+              });
+              core.setFailed(`Comando negado para @${author}`);
+              return;
+            }
+
+            const prNumber = context.issue.number;
+            await github.rest.issues.addLabels({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: prNumber,
+              labels: [BYPASS_LABEL],
+            });
+
+            await github.rest.issues.createComment({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: prNumber,
+              body: [
+                '✅ **Bypass da avaliação de segurança (IA) autorizado** por @marlonhenq.',
+                '',
+                'O workflow **AI security review** será reexecutado e passará sem chamar a OpenAI.',
+                '',
+                '_Use apenas quando tiver certeza de que a reprovação foi falso positivo._',
+              ].join('\n'),
+            });
+
+            core.info(`Bypass aplicado no PR #${prNumber} por @${author}`);
