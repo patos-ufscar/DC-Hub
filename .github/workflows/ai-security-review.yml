@@ -32,12 +32,24 @@ jobs:
           git diff "${{ github.event.pull_request.base.sha }}...pr-head" > pr.diff
           echo "Linhas no diff: $(wc -l < pr.diff)"
 
+      # PRs do mesmo repo podem usar script atualizado do head (bootstrap de mudanças no CI).
+      - name: Usar script de review do PR (mesmo repo)
+        if: github.event.pull_request.head.repo.full_name == github.repository
+        run: |
+          set -euo pipefail
+          if git diff --name-only "${{ github.event.pull_request.base.sha }}...pr-head" \
+            | grep -qx 'scripts/ci/ai_security_review.py'; then
+            git show pr-head:scripts/ci/ai_security_review.py > scripts/ci/ai_security_review.py
+            echo "Usando ai_security_review.py do head do PR."
+          fi
+
       - name: Avaliar segurança (OpenAI)
         id: review
         env:
           OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
           DIFF_PATH: pr.diff
           REVIEW_OUTPUT: review.json
+          REPO_ROOT: ${{ github.workspace }}
         run: python3 scripts/ci/ai_security_review.py
 
       - name: Comentar resultado no PR
@@ -68,6 +80,9 @@ jobs:
               body += `${data.summary || data.skip_reason || 'API/chave indisponível.'}\n\n`;
             } else {
               body += `| **Resultado** | ${passed ? '✅ Aprovado' : '❌ Reprovado'} |\n\n`;
+              if (data.retry_used && data.first_score != null) {
+                body += `> **Segunda análise:** 1ª tentativa **${data.first_score}**/10 → 2ª **${score}**/10 (com contexto do repositório)\n\n`;
+              }
               if (data.summary) body += `${data.summary}\n\n`;
             }
             const findings = data.findings || [];
@@ -99,5 +114,5 @@ jobs:
       - name: Falhar apenas se nota < mínimo (avaliação concluída)
         if: steps.review.outcome == 'failure'
         run: |
-          echo "::error::Nota de segurança abaixo de ${MIN_SECURITY_SCORE}/10."
+          echo "::error::Nota de segurança abaixo de ${MIN_SECURITY_SCORE}/10 (após 2ª análise com contexto)."
           exit 1

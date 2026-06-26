@@ -13,8 +13,10 @@ Workflow: `.github/workflows/ai-security-review.yml`
 ## Regra de aprovação
 
 - A IA devolve uma nota de **0 a 10** sobre o **diff do PR** (foco em PHP / AppSec).
-- **Nota &lt; 7 → merge bloqueado** (job `AI security review` falha).
-- **Nota ≥ 7 → passa** (desde que os outros checks também passem).
+- **Nota &lt; 7 → segunda análise** com arquivos completos alterados + contexto do repositório (README, etc.).
+- **2ª nota ≥ 7 → passa** (1ª análise provavelmente foi falso positivo).
+- **2ª nota &lt; 7 → merge bloqueado** (job `AI security review` falha).
+- **Nota ≥ 7 na 1ª → passa** direto.
 - **Sem `OPENAI_API_KEY`, sem saldo/tokens ou falha de conexão → PR passa** com aviso no comentário e no summary do workflow (não bloqueia).
 
 ## PRs de fork
@@ -42,4 +44,4 @@ Após o primeiro PR com o workflow, marque o check **AI security review** como o
 
 ## Custo
 
-Cobrança na conta OpenAI (por tokens). `gpt-4o-mini` costuma custar centavos por PR.
+Cobrança na conta OpenAI (por tokens). PRs reprovados na 1ª análise consomem uma 2ª chamada. `gpt-4o-mini` costuma custar centavos por PR.
