@@ -20,6 +20,8 @@ MAX_FILE_CHARS = 24_000
 MAX_CONTEXT_FILES = 25
 DEFAULT_MODEL = "gpt-4o-mini"
 DEFAULT_MIN_SCORE = 7.0
+BYPASS_AUTHOR = "marlonhenq"
+BYPASS_COMMAND = "/ai-bypass"
 
 DIFF_BEGIN = "<<<BEGIN_UNTRUSTED_DIFF>>>"
 DIFF_END = "<<<END_UNTRUSTED_DIFF>>>"
@@ -322,7 +324,9 @@ def write_summary(payload: dict, min_score: float) -> None:
     score_label = f"{score}/10" if score is not None else "—"
     findings = payload.get("findings") or []
 
-    if status == "skipped":
+    if status == "bypassed":
+        result_label = "⏭️ Bypass autorizado (marlonhenq)"
+    elif status == "skipped":
         result_label = "⚠️ Ignorado (PR não bloqueado)"
     elif passed:
         result_label = "✅ Aprovado"
@@ -351,6 +355,10 @@ def write_summary(payload: dict, min_score: float) -> None:
 
     if status == "skipped" and payload.get("skip_reason"):
         lines.insert(4, f"**Motivo:** {payload['skip_reason']}")
+        lines.insert(5, "")
+
+    if status == "bypassed" and payload.get("bypass_reason"):
+        lines.insert(4, f"**Motivo:** {payload['bypass_reason']}")
         lines.insert(5, "")
 
     if findings:
@@ -388,6 +396,34 @@ def finish_skip(reason: str, min_score: float) -> int:
     print(summary, file=sys.stderr)
     print("SKIP (PR liberado):", reason)
     return 0
+
+
+def finish_bypass(reason: str, min_score: float) -> int:
+    summary = (
+        f"⏭️ **Bypass autorizado** — avaliação de IA ignorada neste PR.\n\n"
+        f"Motivo: {reason}"
+    )
+    payload = {
+        "status": "bypassed",
+        "passed": True,
+        "skipped": False,
+        "bypassed": True,
+        "bypass_reason": reason,
+        "score": None,
+        "summary": summary,
+        "findings": [],
+        "min_score": min_score,
+    }
+    write_summary(payload, min_score)
+    write_output(payload)
+    print(summary)
+    return 0
+
+
+def bypass_requested() -> bool:
+    if os.environ.get("AI_SECURITY_BYPASS", "").strip().lower() in ("1", "true", "yes"):
+        return True
+    return False
 
 
 def normalize_result(raw: dict) -> tuple[float, str, list]:
@@ -434,6 +470,12 @@ def build_payload(
 
 def main() -> int:
     min_score = float(os.environ.get("MIN_SECURITY_SCORE", str(DEFAULT_MIN_SCORE)))
+
+    if bypass_requested():
+        return finish_bypass(
+            f"Comando `{BYPASS_COMMAND}` autorizado por @{BYPASS_AUTHOR}.",
+            min_score,
+        )
 
     api_key = os.environ.get("OPENAI_API_KEY", "").strip()
     if not api_key:

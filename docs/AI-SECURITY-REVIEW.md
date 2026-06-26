@@ -27,6 +27,18 @@ Por segurança, o job **não executa código do fork** — só baixa o diff via 
 
 Configure o secret em **Settings → Secrets and variables → Actions → New repository secret** (veja tabela acima).
 
+## Bypass manual (só @marlonhenq)
+
+Se a IA reprovar incorretamente mesmo após a 2ª análise, **apenas [@marlonhenq](https://github.com/marlonhenq)** pode ignorar a verificação comentando no PR:
+
+```
+/ai-bypass
+```
+
+O workflow `AI Security Commands` valida o autor, aplica a label `ai-security-bypass` e reexecuta o review (que passa sem chamar a OpenAI).
+
+Outros usuários que tentarem o comando recebem recusa automática. Adicionar só a label manualmente **não** basta — é necessário o comentário `/ai-bypass` de @marlonhenq.
+
 ## Opcional
 
 | Variável no workflow | Padrão | Descrição |
