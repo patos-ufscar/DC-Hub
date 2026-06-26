@@ -1,0 +1,38 @@
+name: Delete merged branch
+
+on:
+  pull_request:
+    types: [closed]
+
+permissions:
+  contents: write
+
+jobs:
+  delete-branch:
+    name: Delete head branch
+    if: github.event.pull_request.merged == true
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/github-script@v7
+        with:
+          script: |
+            const pr = context.payload.pull_request;
+            if (pr.head.repo.full_name !== context.repo.full_name) {
+              core.info('Branch de fork — não remove no upstream.');
+              return;
+            }
+            const ref = `heads/${pr.head.ref}`;
+            try {
+              await github.rest.git.deleteRef({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                ref,
+              });
+              core.info(`Branch removida: ${pr.head.ref}`);
+            } catch (error) {
+              if (error.status === 422) {
+                core.info(`Branch já removida ou protegida: ${pr.head.ref}`);
+                return;
+              }
+              throw error;
+            }
