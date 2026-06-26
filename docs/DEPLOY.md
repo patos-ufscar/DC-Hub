@@ -137,7 +137,7 @@ No servidor, no `~deploy/.ssh/authorized_keys`, adicione a chave pública corres
 
 ### 6. Cron (backup + lembretes)
 
-Após o primeiro deploy:
+O **deploy automático** (GitHub Actions) já executa `install-server-cron.sh` após cada merge na `main`. Em setup manual ou servidor novo:
 
 ```bash
 cd /var/www/dc-hub

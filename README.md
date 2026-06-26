@@ -158,7 +158,7 @@ No login, use **Esqueci minha senha**. O link do e-mail abre `/?reset=TOKEN` e p
 - **CI:** em cada PR para `main`, sintaxe PHP (`.github/workflows/ci.yml`)
 - **Segurança:** Gitleaks (secrets) + Semgrep PHP/OWASP (`.github/workflows/security.yml`)
 - **Segurança IA:** ChatGPT avalia o diff do PR — nota mínima **7**/10 (secret `OPENAI_API_KEY`; ver [`docs/AI-SECURITY-REVIEW.md`](docs/AI-SECURITY-REVIEW.md))
-- **Deploy:** após merge na `main`, deploy automático via SSH/rsync (`.github/workflows/deploy.yml`)
+- **Deploy:** após merge na `main`, deploy automático via SSH/rsync (`.github/workflows/deploy.yml`), com migrações e atualização do cron no servidor
 - **Main protegida:** use PRs; configure com [`docs/DEPLOY.md`](docs/DEPLOY.md) ou `scripts/github/setup-branch-protection.sh`
 - **Backup:** cron diário no servidor mantém ~31 dias de cópias do SQLite (`scripts/deploy/backup-sqlite.sh`)
 

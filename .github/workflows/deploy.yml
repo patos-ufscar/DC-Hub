@@ -92,5 +92,9 @@ jobs:
               sudo chown "${WEB_USER}:${WEB_USER}" database/*.sqlite
             fi
           fi
+          echo "Aplicando migrações do banco..."
+          php -r 'require "app/bootstrap.php"; App\Core\DatabaseMigration::run(App\Core\Database::getConnection());'
+          echo "Instalando/atualizando cron (backup, reagendamento, lembretes)..."
+          sudo ./scripts/deploy/install-server-cron.sh "${DEPLOY_PATH}"
           echo "Deploy concluído em \$(date -Iseconds)"
           REMOTE

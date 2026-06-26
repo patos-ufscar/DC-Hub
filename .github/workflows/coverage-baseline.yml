@@ -6,6 +6,7 @@ on:
 
 permissions:
   contents: write
+  pull-requests: write
 
 jobs:
   update-baseline:
@@ -31,14 +32,30 @@ jobs:
       - name: Update baseline file
         run: php scripts/ci/update-coverage-baseline.php build/coverage/clover.xml
 
-      - name: Commit baseline if changed
+      - name: Open PR if baseline increased
+        env:
+          GH_TOKEN: ${{ github.token }}
         run: |
           if git diff --quiet .github/coverage-baseline.txt; then
             echo "Baseline inalterada."
             exit 0
           fi
+
+          BRANCH="chore/coverage-baseline"
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git checkout -B "${BRANCH}"
           git add .github/coverage-baseline.txt
-          git commit -m "chore: atualizar baseline de cobertura de testes [skip ci]"
-          git push
+          git commit -m "chore: atualizar baseline de cobertura de testes"
+          git push --force-with-lease origin "${BRANCH}"
+
+          EXISTING=$(gh pr list --head "${BRANCH}" --state open --json number -q '.[0].number' || true)
+          if [ -z "${EXISTING}" ]; then
+            gh pr create \
+              --base main \
+              --head "${BRANCH}" \
+              --title "chore: atualizar baseline de cobertura de testes" \
+              --body "Atualização automática após aumento de cobertura na \`main\`. Merge quando o CI passar."
+          else
+            echo "PR #${EXISTING} já aberto para baseline."
+          fi
