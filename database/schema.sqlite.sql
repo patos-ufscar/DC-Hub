@@ -122,4 +122,25 @@ CREATE TABLE IF NOT EXISTS inscricoes (
     FOREIGN KEY (validado_por) REFERENCES usuarios(id) ON DELETE SET NULL ON UPDATE CASCADE
 );
 
+-- Fila de notificações de reagendamento (data/hora alterada). Drenada pelo cron
+-- respeitando a cota diária de e-mails (categoria 'reminder' em email_outbound_log).
+CREATE TABLE IF NOT EXISTS reagendamentos_pendentes (
+    id                  INTEGER PRIMARY KEY AUTOINCREMENT,
+    user_id             INTEGER NOT NULL,
+    atividade_id        INTEGER NOT NULL,
+    data_antiga         TEXT NOT NULL,
+    hora_inicio_antiga  TEXT NOT NULL,
+    hora_fim_antiga     TEXT NOT NULL,
+    data_nova           TEXT NOT NULL,
+    hora_inicio_nova    TEXT NOT NULL,
+    hora_fim_nova       TEXT NOT NULL,
+    status              TEXT NOT NULL DEFAULT 'pendente' CHECK(status IN ('pendente', 'enviado', 'falhou')),
+    created_at          TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    enviado_em          TEXT DEFAULT NULL,
+    FOREIGN KEY (user_id) REFERENCES usuarios(id) ON DELETE CASCADE ON UPDATE CASCADE,
+    FOREIGN KEY (atividade_id) REFERENCES atividades(id) ON DELETE CASCADE ON UPDATE CASCADE
+);
+
+CREATE INDEX IF NOT EXISTS idx_reagendamentos_status ON reagendamentos_pendentes(status, created_at);
+
 PRAGMA foreign_keys = ON;

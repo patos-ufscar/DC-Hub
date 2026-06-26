@@ -184,4 +184,29 @@ CREATE TABLE IF NOT EXISTS inscricoes (
         ON DELETE SET NULL ON UPDATE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
+-- ============================================================
+-- 11. Fila de notificações de reagendamento (data/hora alterada)
+-- ============================================================
+CREATE TABLE IF NOT EXISTS reagendamentos_pendentes (
+    id                  INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+    user_id             INT UNSIGNED NOT NULL,
+    atividade_id        INT UNSIGNED NOT NULL,
+    data_antiga         DATE NOT NULL,
+    hora_inicio_antiga  TIME NOT NULL,
+    hora_fim_antiga     TIME NOT NULL,
+    data_nova           DATE NOT NULL,
+    hora_inicio_nova    TIME NOT NULL,
+    hora_fim_nova       TIME NOT NULL,
+    status              ENUM('pendente','enviado','falhou') NOT NULL DEFAULT 'pendente',
+    created_at          TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    enviado_em          DATETIME DEFAULT NULL,
+    INDEX idx_reagendamentos_status (status, created_at),
+    CONSTRAINT fk_reagendamentos_user
+        FOREIGN KEY (user_id) REFERENCES usuarios(id)
+        ON DELETE CASCADE ON UPDATE CASCADE,
+    CONSTRAINT fk_reagendamentos_atividade
+        FOREIGN KEY (atividade_id) REFERENCES atividades(id)
+        ON DELETE CASCADE ON UPDATE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
 SET FOREIGN_KEY_CHECKS = 1;
