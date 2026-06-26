@@ -67,6 +67,10 @@ jobs:
           echo "Linhas no diff: $(wc -l < pr.diff)"
 
       # PRs do mesmo repo podem usar script atualizado do head (bootstrap de mudanças no CI).
+<<<<<<< HEAD
+=======
+      # Forks continuam com o script da base — evita executar código não revisado de terceiros.
+>>>>>>> 6129d9a (fix: calibrar IA para CI e usar script do PR no mesmo repo)
       - name: Usar script de review do PR (mesmo repo)
         if: >-
           steps.bypass.outputs.active != 'true' &&
