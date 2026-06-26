@@ -22,6 +22,10 @@ TZ=America/Sao_Paulo
 # Backup SQLite diário (03:00), mantém ~31 dias
 0 3 * * * root ${DEPLOY_PATH}/scripts/deploy/backup-sqlite.sh >> ${DEPLOY_PATH}/backups/backup.log 2>&1
 
+# Avisos de reagendamento (data/hora alterada) — a cada 15 min, antes dos lembretes.
+# Compartilha a cota de 50/dia (categoria 'reminder').
+*/15 * * * * root ${PHP_BIN} ${DEPLOY_PATH}/cron/send_reschedule_notifications.php >> ${DEPLOY_PATH}/backups/reminders.log 2>&1
+
 # Lembretes planejados — lote principal (8:00, fuso APP_TIMEZONE no .env)
 0 8 * * * root ${PHP_BIN} ${DEPLOY_PATH}/cron/send_reminders.php >> ${DEPLOY_PATH}/backups/reminders.log 2>&1
 

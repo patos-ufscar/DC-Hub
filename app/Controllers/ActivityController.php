@@ -10,6 +10,7 @@ use App\Core\Response;
 use App\Core\Session;
 use App\Models\Activity;
 use App\Models\Event;
+use App\Models\RescheduleNotification;
 use PDO;
 
 class ActivityController
@@ -81,7 +82,18 @@ class ActivityController
 
         $this->activityModel->update($id, $input);
 
-        Response::success('Atividade atualizada.');
+        $extra = [];
+        if (RescheduleNotification::scheduleChanged($activity, $input)) {
+            try {
+                $queued = (new RescheduleNotification($this->db))
+                    ->enqueueForActivity($id, $activity, $input);
+                $extra['notificacoes_enfileiradas'] = $queued;
+            } catch (\Throwable $e) {
+                error_log('Falha ao enfileirar avisos de reagendamento: ' . $e->getMessage());
+            }
+        }
+
+        Response::success('Atividade atualizada.', $extra);
     }
 
     public function delete(): void

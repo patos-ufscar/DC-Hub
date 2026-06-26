@@ -31,6 +31,7 @@ final class DatabaseMigration
         self::migratePasswordResetAndReminders($db);
         self::migrateEmailOutboundLog($db);
         self::migrateLembreteScheduledTipo($db);
+        self::migrateRescheduleNotifications($db);
     }
 
     private static function migrateMysql(PDO $db): void
@@ -51,6 +52,7 @@ final class DatabaseMigration
         self::migratePasswordResetAndReminders($db);
         self::migrateEmailOutboundLog($db);
         self::migrateLembreteScheduledTipo($db);
+        self::migrateRescheduleNotifications($db);
     }
 
     private static function migrateLembreteScheduledTipo(PDO $db): void
@@ -125,6 +127,63 @@ final class DatabaseMigration
                 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci'
             );
         }
+    }
+
+    private static function migrateRescheduleNotifications(PDO $db): void
+    {
+        if (self::tableExists($db, 'reagendamentos_pendentes')) {
+            return;
+        }
+
+        if (DatabaseDialect::isSqlite()) {
+            $db->exec(
+                'CREATE TABLE IF NOT EXISTS reagendamentos_pendentes (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    user_id INTEGER NOT NULL,
+                    atividade_id INTEGER NOT NULL,
+                    data_antiga TEXT NOT NULL,
+                    hora_inicio_antiga TEXT NOT NULL,
+                    hora_fim_antiga TEXT NOT NULL,
+                    data_nova TEXT NOT NULL,
+                    hora_inicio_nova TEXT NOT NULL,
+                    hora_fim_nova TEXT NOT NULL,
+                    status TEXT NOT NULL DEFAULT \'pendente\' CHECK(status IN (\'pendente\', \'enviado\', \'falhou\')),
+                    created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                    enviado_em TEXT DEFAULT NULL,
+                    FOREIGN KEY (user_id) REFERENCES usuarios(id) ON DELETE CASCADE ON UPDATE CASCADE,
+                    FOREIGN KEY (atividade_id) REFERENCES atividades(id) ON DELETE CASCADE ON UPDATE CASCADE
+                )'
+            );
+            $db->exec(
+                'CREATE INDEX IF NOT EXISTS idx_reagendamentos_status
+                 ON reagendamentos_pendentes(status, created_at)'
+            );
+            return;
+        }
+
+        $db->exec(
+            'CREATE TABLE reagendamentos_pendentes (
+                id INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+                user_id INT UNSIGNED NOT NULL,
+                atividade_id INT UNSIGNED NOT NULL,
+                data_antiga DATE NOT NULL,
+                hora_inicio_antiga TIME NOT NULL,
+                hora_fim_antiga TIME NOT NULL,
+                data_nova DATE NOT NULL,
+                hora_inicio_nova TIME NOT NULL,
+                hora_fim_nova TIME NOT NULL,
+                status ENUM(\'pendente\',\'enviado\',\'falhou\') NOT NULL DEFAULT \'pendente\',
+                created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                enviado_em DATETIME DEFAULT NULL,
+                INDEX idx_reagendamentos_status (status, created_at),
+                CONSTRAINT fk_reagendamentos_user
+                    FOREIGN KEY (user_id) REFERENCES usuarios(id)
+                    ON DELETE CASCADE ON UPDATE CASCADE,
+                CONSTRAINT fk_reagendamentos_atividade
+                    FOREIGN KEY (atividade_id) REFERENCES atividades(id)
+                    ON DELETE CASCADE ON UPDATE CASCADE
+            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci'
+        );
     }
 
     private static function migratePasswordResetAndReminders(PDO $db): void

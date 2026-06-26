@@ -150,6 +150,7 @@ O cron instala:
 | Horário | Script | Função |
 |---------|--------|--------|
 | 03:00 | `backup-sqlite.sh` | Backup diário do SQLite |
+| */15 min | `send_reschedule_notifications.php` | Avisos de reagendamento (data/hora alterada) — compartilha a cota de 50/dia |
 | 08:00 | `send_reminders.php` | Lembretes planejados — lote principal (1 e-mail por inscrição, digest por usuário) |
 | */30 min | `send_reminders.php` | Reforço diário e inscrições tardias (respeita cota de 50/dia) |
 
@@ -157,6 +158,7 @@ Teste manual de lembretes:
 
 ```bash
 php /var/www/dc-hub/cron/send_reminders.php
+php /var/www/dc-hub/cron/send_reschedule_notifications.php
 tail -f /var/www/dc-hub/backups/reminders.log
 ```
 

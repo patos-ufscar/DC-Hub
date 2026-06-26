@@ -71,7 +71,7 @@ DC-Hub/
 │   ├── index.php       # Front controller
 │   ├── js/
 │   └── css/
-├── cron/               # Lembretes por e-mail
+├── cron/               # Lembretes e avisos de reagendamento por e-mail
 ├── scripts/            # Utilitários (init-db)
 └── .env.example
 ```
