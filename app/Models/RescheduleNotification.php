@@ -32,6 +32,12 @@ class RescheduleNotification
      */
     public function enqueueForActivity(int $atividadeId, array $old, array $new): int
     {
+        if ($atividadeId <= 0) {
+            throw new \InvalidArgumentException('Atividade inválida para reagendamento.');
+        }
+        self::assertValidSchedule($old);
+        self::assertValidSchedule($new);
+
         $del = $this->db->prepare(
             "DELETE FROM reagendamentos_pendentes
              WHERE atividade_id = :aid AND status = 'pendente'"
@@ -123,6 +129,22 @@ class RescheduleNotification
         $stmt->execute();
 
         return (int) $stmt->fetchColumn();
+    }
+
+    private static function assertValidSchedule(array $schedule): void
+    {
+        $date = trim((string) ($schedule['data'] ?? ''));
+        $dt = \DateTimeImmutable::createFromFormat('!Y-m-d', $date);
+        if (!$dt || $dt->format('Y-m-d') !== $date) {
+            throw new \InvalidArgumentException('Data inválida para reagendamento.');
+        }
+
+        foreach (['hora_inicio', 'hora_fim'] as $field) {
+            $time = trim((string) ($schedule[$field] ?? ''));
+            if (!preg_match('/^([01]\d|2[0-3]):[0-5]\d(:[0-5]\d)?$/', $time)) {
+                throw new \InvalidArgumentException('Horário inválido para reagendamento.');
+            }
+        }
     }
 
     private static function normTime(string $time): string

@@ -226,6 +226,11 @@ class ActivityController
         if ($titulo === '' || $data === '' || $horaInicio === '' || $horaFim === '' || $localId <= 0) {
             Response::error('Preencha título, data, horários e local.');
         }
+
+        $data       = self::validDateOrFail($data);
+        $horaInicio = self::validTimeOrFail($horaInicio);
+        $horaFim    = self::validTimeOrFail($horaFim);
+
         if ($horaFim <= $horaInicio) {
             Response::error('Horário de fim deve ser posterior ao de início.');
         }
@@ -287,6 +292,27 @@ class ActivityController
             'exibir_vagas_total'    => $exibirVagasTotal,
             'exibir_vagas_ocupadas' => $exibirVagasOcupadas,
         ];
+    }
+
+    private static function validDateOrFail(string $value): string
+    {
+        $value = trim($value);
+        $dt = \DateTimeImmutable::createFromFormat('!Y-m-d', $value);
+        if (!$dt || $dt->format('Y-m-d') !== $value) {
+            Response::error('Data inválida. Use o formato AAAA-MM-DD.');
+        }
+
+        return $value;
+    }
+
+    private static function validTimeOrFail(string $value): string
+    {
+        $value = trim($value);
+        if (!preg_match('/^([01]\d|2[0-3]):[0-5]\d(:[0-5]\d)?$/', $value)) {
+            Response::error('Horário inválido. Use o formato HH:MM.');
+        }
+
+        return substr($value, 0, 5);
     }
 
     private function assertGrupoAccess(int $grupoId, string $role): void

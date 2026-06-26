@@ -97,6 +97,37 @@ final class RescheduleNotificationTest extends SqliteTestCase
         self::assertSame(1, $model->countByStatus('falhou'));
     }
 
+    public function testEnqueueRejectsInvalidNewDate(): void
+    {
+        $this->insertActivity(1, '2026-05-10');
+        $this->insertRsvp(1, 1);
+        $model = new RescheduleNotification($this->db);
+
+        $this->expectException(\InvalidArgumentException::class);
+        $model->enqueueForActivity(1, $this->oldSchedule(), [
+            'data' => '2026-13-40', 'hora_inicio' => '20:00', 'hora_fim' => '22:00',
+        ]);
+    }
+
+    public function testEnqueueRejectsInvalidTime(): void
+    {
+        $this->insertActivity(1, '2026-05-10');
+        $model = new RescheduleNotification($this->db);
+
+        $this->expectException(\InvalidArgumentException::class);
+        $model->enqueueForActivity(1, $this->oldSchedule(), [
+            'data' => '2026-05-12', 'hora_inicio' => '25:99', 'hora_fim' => '22:00',
+        ]);
+    }
+
+    public function testEnqueueRejectsInvalidActivityId(): void
+    {
+        $model = new RescheduleNotification($this->db);
+
+        $this->expectException(\InvalidArgumentException::class);
+        $model->enqueueForActivity(0, $this->oldSchedule(), $this->newSchedule());
+    }
+
     /** @return array{data: string, hora_inicio: string, hora_fim: string} */
     private function oldSchedule(): array
     {
